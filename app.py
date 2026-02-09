@@ -603,7 +603,7 @@ def main():
             components_data = get_components_issues_count(jira, jira_config['project_key'], sprint_info['id'])
         
         if components_data:
-
+            import pandas as pd
             # Convert to DataFrame for better table display
             df = pd.DataFrame(components_data)
             
@@ -694,6 +694,7 @@ def main():
             st.subheader("📈 Status Breakdown")
             
             if component_details['status_breakdown']:
+                import pandas as pd
                 status_data = [
                     {'Status': status, 'Count': count}
                     for status, count in component_details['status_breakdown'].items()
