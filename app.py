@@ -466,6 +466,53 @@ def get_component_capability_status(jira, project_key, component_name, sprint_id
         return None
 
 
+def get_critical_high_issues(jira, project_key, component_name, sprint_id=None, sprint_only=False):
+    """
+    Get detailed information about Critical and High priority issues.
+    
+    Args:
+        jira: Jira connection
+        project_key: Project key
+        component_name: Component name to filter by
+        sprint_id: Current sprint ID
+        sprint_only: If True, get only sprint issues; if False, get backlog issues
+    
+    Returns:
+        List of issues with details
+    """
+    try:
+        project = jira.project(project_key)
+        component = None
+        
+        # Find the component by name
+        for comp in project.components:
+            if comp.name == component_name:
+                component = comp
+                break
+        
+        if not component:
+            return None
+        
+        # Build JQL based on sprint_only flag
+        component_filter = f'AND component = {component.id}'
+        base_query = f'project = {project_key} {component_filter} AND resolution = Unresolved AND priority IN (Highest, Critical, High)'
+        
+        if sprint_only:
+            # Sprint issues only
+            jql = f'{base_query} AND sprint = {sprint_id} ORDER BY priority DESC, created DESC'
+        else:
+            # Backlog issues (not in current sprint and no sprint)
+            jql = f'{base_query} AND (sprint != {sprint_id} OR sprint is EMPTY) ORDER BY priority DESC, created DESC'
+        
+        issues = jira.search_issues(jql, maxResults=100, expand='changelog')
+        
+        return issues if issues else None
+    
+    except Exception as e:
+        st.error(f"Error fetching critical/high issues: {str(e)}")
+        return None
+
+
 # ============================================================================
 # PAGE HANDLERS
 # ============================================================================
@@ -852,6 +899,104 @@ def main():
                 high_issues = (capability_data['Defects'].get('Sprint High', 0) + 
                              capability_data['Features'].get('Sprint High', 0))
                 st.metric("Sprint High Issues", high_issues)
+        
+            st.divider()
+            
+            # Display details section for Critical & High tickets
+            st.subheader("🔴 Details - Critical & High Tickets")
+            
+            # Create tabs for Backlog and Sprint
+            tab_backlog, tab_sprint = st.tabs(["📋 Backlog", "🏃 Sprint"])
+            
+            # BACKLOG DETAILS
+            with tab_backlog:
+                st.write("**Critical and High Priority Issues in Backlog**")
+                
+                with st.spinner("Fetching backlog critical/high issues..."):
+                    backlog_issues = get_critical_high_issues(jira, jira_config['project_key'], component_name, sprint_id, sprint_only=False)
+                
+                if backlog_issues:
+                    import pandas as pd
+                    backlog_data = []
+                    
+                    for issue in backlog_issues:
+                        # Get fix version info
+                        fix_version = 'N/A'
+                        if issue.fields.fixVersions:
+                            fv = issue.fields.fixVersions[0]
+                            release_date = fv.releaseDate if hasattr(fv, 'releaseDate') and fv.releaseDate else 'N/A'
+                            fix_version = f"{fv.name} ({release_date})"
+                        
+                        backlog_data.append({
+                            'Issue': f"{issue.key}",
+                            'Summary': issue.fields.summary[:60] + ('...' if len(issue.fields.summary) > 60 else ''),
+                            'Priority': issue.fields.priority.name if issue.fields.priority else 'N/A',
+                            'Resolution Approach': issue.fields.customfield_10051 if hasattr(issue.fields, 'customfield_10051') else 'N/A',
+                            'Target Completion': issue.fields.duedate if issue.fields.duedate else 'N/A',
+                            'Target Deployment': fix_version
+                        })
+                    
+                    df_backlog = pd.DataFrame(backlog_data)
+                    st.dataframe(
+                        df_backlog,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            'Issue': st.column_config.TextColumn('Issue', width='small'),
+                            'Summary': st.column_config.TextColumn('Summary', width='large'),
+                            'Priority': st.column_config.TextColumn('Priority', width='small'),
+                            'Resolution Approach': st.column_config.TextColumn('Resolution Approach', width='medium'),
+                            'Target Completion': st.column_config.TextColumn('Target Completion', width='medium'),
+                            'Target Deployment': st.column_config.TextColumn('Target Deployment', width='large'),
+                        }
+                    )
+                else:
+                    st.info("No critical or high priority issues found in backlog.")
+            
+            # SPRINT DETAILS
+            with tab_sprint:
+                st.write("**Critical and High Priority Issues in Sprint**")
+                
+                with st.spinner("Fetching sprint critical/high issues..."):
+                    sprint_issues = get_critical_high_issues(jira, jira_config['project_key'], component_name, sprint_id, sprint_only=True)
+                
+                if sprint_issues:
+                    import pandas as pd
+                    sprint_data = []
+                    
+                    for issue in sprint_issues:
+                        # Get fix version info
+                        fix_version = 'N/A'
+                        if issue.fields.fixVersions:
+                            fv = issue.fields.fixVersions[0]
+                            release_date = fv.releaseDate if hasattr(fv, 'releaseDate') and fv.releaseDate else 'N/A'
+                            fix_version = f"{fv.name} ({release_date})"
+                        
+                        sprint_data.append({
+                            'Issue': f"{issue.key}",
+                            'Summary': issue.fields.summary[:60] + ('...' if len(issue.fields.summary) > 60 else ''),
+                            'Priority': issue.fields.priority.name if issue.fields.priority else 'N/A',
+                            'Resolution Approach': issue.fields.customfield_10051 if hasattr(issue.fields, 'customfield_10051') else 'N/A',
+                            'Target Completion': issue.fields.duedate if issue.fields.duedate else 'N/A',
+                            'Target Deployment': fix_version
+                        })
+                    
+                    df_sprint = pd.DataFrame(sprint_data)
+                    st.dataframe(
+                        df_sprint,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            'Issue': st.column_config.TextColumn('Issue', width='small'),
+                            'Summary': st.column_config.TextColumn('Summary', width='large'),
+                            'Priority': st.column_config.TextColumn('Priority', width='small'),
+                            'Resolution Approach': st.column_config.TextColumn('Resolution Approach', width='medium'),
+                            'Target Completion': st.column_config.TextColumn('Target Completion', width='medium'),
+                            'Target Deployment': st.column_config.TextColumn('Target Deployment', width='large'),
+                        }
+                    )
+                else:
+                    st.info("No critical or high priority issues found in sprint.")
         
         else:
             st.error(f"Unable to fetch capability status for {component_name}")
