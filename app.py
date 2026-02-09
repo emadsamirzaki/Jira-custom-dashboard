@@ -416,15 +416,6 @@ def get_component_capability_status(jira, project_key, component_name, sprint_id
         if not component:
             return None
         
-        # Define priority levels for mapping
-        priority_mapping = {
-            'Highest': 'Critical',
-            'Critical': 'Critical',
-            'High': 'High',
-            'Medium': 'Medium',
-            'Low': 'Low'
-        }
-        
         # Initialize counters
         data = {
             'Defects': {},
@@ -437,37 +428,34 @@ def get_component_capability_status(jira, project_key, component_name, sprint_id
         # Time-based filters
         thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
         
-        # Issue types mapping
-        defect_types = 'Bug'
-        feature_types = 'Story, Task'
-        
         # Define all the criteria we need to count
+        # Using proper JQL syntax with IN operator for multiple values
         criteria = [
             # Backlog columns (NOT in current sprint)
-            ('Backlog Critical', f'{component_filter} AND resolution = Unresolved AND type = {{type}} AND priority in (Highest, Critical) AND sprint != {sprint_id}'),
-            ('Backlog High', f'{component_filter} AND resolution = Unresolved AND type = {{type}} AND priority = High AND sprint != {sprint_id}'),
-            ('Backlog Medium', f'{component_filter} AND resolution = Unresolved AND type = {{type}} AND priority = Medium AND sprint != {sprint_id}'),
-            ('Backlog Low', f'{component_filter} AND resolution = Unresolved AND type = {{type}} AND priority = Low AND sprint != {sprint_id}'),
+            ('Backlog Critical', f'{component_filter} AND resolution = Unresolved AND priority IN (Highest, Critical) AND sprint != {sprint_id}'),
+            ('Backlog High', f'{component_filter} AND resolution = Unresolved AND priority = High AND sprint != {sprint_id}'),
+            ('Backlog Medium', f'{component_filter} AND resolution = Unresolved AND priority = Medium AND sprint != {sprint_id}'),
+            ('Backlog Low', f'{component_filter} AND resolution = Unresolved AND priority = Low AND sprint != {sprint_id}'),
             # Sprint columns (IN current sprint)
-            ('Sprint Critical', f'{component_filter} AND resolution = Unresolved AND type = {{type}} AND priority in (Highest, Critical) AND sprint = {sprint_id}'),
-            ('Sprint High', f'{component_filter} AND resolution = Unresolved AND type = {{type}} AND priority = High AND sprint = {sprint_id}'),
-            ('Sprint Medium', f'{component_filter} AND resolution = Unresolved AND type = {{type}} AND priority = Medium AND sprint = {sprint_id}'),
-            ('Sprint Low', f'{component_filter} AND resolution = Unresolved AND type = {{type}} AND priority = Low AND sprint = {sprint_id}'),
+            ('Sprint Critical', f'{component_filter} AND resolution = Unresolved AND priority IN (Highest, Critical) AND sprint = {sprint_id}'),
+            ('Sprint High', f'{component_filter} AND resolution = Unresolved AND priority = High AND sprint = {sprint_id}'),
+            ('Sprint Medium', f'{component_filter} AND resolution = Unresolved AND priority = Medium AND sprint = {sprint_id}'),
+            ('Sprint Low', f'{component_filter} AND resolution = Unresolved AND priority = Low AND sprint = {sprint_id}'),
             # Other metrics
-            ('Total', f'{component_filter} AND resolution = Unresolved AND type = {{type}}'),
-            ('Resolved in last 30 days', f'{component_filter} AND resolved >= {thirty_days_ago} AND type = {{type}}'),
-            ('Added in last 30 days', f'{component_filter} AND created >= {thirty_days_ago} AND type = {{type}}'),
+            ('Total', f'{component_filter} AND resolution = Unresolved'),
+            ('Resolved in last 30 days', f'{component_filter} AND resolved >= {thirty_days_ago}'),
+            ('Added in last 30 days', f'{component_filter} AND created >= {thirty_days_ago}'),
         ]
         
         # Count issues for each criteria and issue type
-        for column_name, jql_template in criteria:
+        for column_name, base_jql in criteria:
             # Count Defects (Bugs)
-            jql_defect = f'project = {project_key} {jql_template.format(type=defect_types)}'
+            jql_defect = f'project = {project_key} {base_jql} AND type = Bug'
             defect_count = jira.search_issues(jql_defect, maxResults=0).total
             data['Defects'][column_name] = defect_count
             
             # Count Features (Story/Task)
-            jql_feature = f'project = {project_key} {jql_template.format(type=feature_types)}'
+            jql_feature = f'project = {project_key} {base_jql} AND type IN (Story, Task)'
             feature_count = jira.search_issues(jql_feature, maxResults=0).total
             data['Features'][column_name] = feature_count
         
