@@ -6,8 +6,9 @@ Displays project information and current sprint details.
 import streamlit as st
 import yaml
 from jira import JIRA
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
+import pandas as pd
 
 
 # ============================================================================
@@ -246,7 +247,7 @@ with st.sidebar:
         st.session_state.selected_component = None
     
     # Main page selection
-    main_pages = ['Home', 'Sprint Status', 'Sprint Metrics', 'Custom Reports']
+    main_pages = ['Home', 'Sprint Status', 'Component Capability Status', 'Sprint Metrics', 'Custom Reports']
     current_index = main_pages.index(st.session_state.current_page.split(' - ')[0]) if st.session_state.current_page.split(' - ')[0] in main_pages else 0
     
     selected_main = st.radio(
@@ -274,15 +275,7 @@ with st.sidebar:
             
             if jira_conn:
                 # Define preferred component order (will match by keyword)
-                preferred_order = [
-                    'Tech debt',
-                    'patch',
-                    'ITSM',
-                    'ESP',
-                    'Life Cycle',
-                    'back and recovery',
-                    'Enterprise monitor'
-                ]
+                preferred_order = config.get('components', {}).get('preferred_order', [])
                 
                 components = get_project_components(jira_conn, jira_config['project_key'], preferred_order)
                 
@@ -294,6 +287,46 @@ with st.sidebar:
                     )
                     st.session_state.selected_component = selected_component
                     st.session_state.current_page = f'Sprint Status - {selected_component}'
+                else:
+                    st.warning("No components found in project")
+                    st.session_state.current_page = 'Home'
+            else:
+                st.warning("Unable to fetch components")
+                st.session_state.current_page = 'Home'
+        
+        except:
+            st.session_state.current_page = 'Home'
+    
+    # If "Component Capability Status" is selected, show component submenu
+    elif selected_main == 'Component Capability Status':
+        st.divider()
+        st.subheader("📋 Select Component")
+        
+        # Load config for Jira connection (needed for component fetching)
+        config = load_config()
+        jira_config = config.get('jira', {})
+        
+        try:
+            jira_conn = get_jira_connection(
+                jira_config['url'],
+                jira_config['email'],
+                jira_config['api_token']
+            )
+            
+            if jira_conn:
+                # Define preferred component order (will match by keyword)
+                preferred_order = config.get('components', {}).get('preferred_order', [])
+                
+                components = get_project_components(jira_conn, jira_config['project_key'], preferred_order)
+                
+                if components:
+                    selected_component = st.selectbox(
+                        "Choose component:",
+                        components,
+                        key='capability_component_select'
+                    )
+                    st.session_state.selected_component = selected_component
+                    st.session_state.current_page = f'Component Capability Status - {selected_component}'
                 else:
                     st.warning("No components found in project")
                     st.session_state.current_page = 'Home'
@@ -360,6 +393,88 @@ def get_component_details(jira, project_key, component_name, sprint_id=None):
         }
     
     except Exception as e:
+        return None
+
+
+def get_component_capability_status(jira, project_key, component_name, sprint_id=None):
+    """
+    Get comprehensive capability status for a component including open ticket counts
+    across different priority levels, sprint status, and time-based metrics.
+    
+    Returns a dictionary with counts organized by issue type (Bugs/Features) and filters.
+    """
+    try:
+        project = jira.project(project_key)
+        component = None
+        
+        # Find the component by name
+        for comp in project.components:
+            if comp.name == component_name:
+                component = comp
+                break
+        
+        if not component:
+            return None
+        
+        # Define priority levels for mapping
+        priority_mapping = {
+            'Highest': 'Critical',
+            'Critical': 'Critical',
+            'High': 'High',
+            'Medium': 'Medium',
+            'Low': 'Low'
+        }
+        
+        # Initialize counters
+        data = {
+            'Defects': {},
+            'Features': {}
+        }
+        
+        # Base component filter
+        component_filter = f'AND component = {component.id}'
+        
+        # Time-based filters
+        thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        # Issue types mapping
+        defect_types = 'Bug'
+        feature_types = 'Story, Task'
+        
+        # Define all the criteria we need to count
+        criteria = [
+            # Backlog columns (NOT in current sprint)
+            ('Backlog Critical', f'{component_filter} AND resolution = Unresolved AND type = {{type}} AND priority in (Highest, Critical) AND sprint != {sprint_id}'),
+            ('Backlog High', f'{component_filter} AND resolution = Unresolved AND type = {{type}} AND priority = High AND sprint != {sprint_id}'),
+            ('Backlog Medium', f'{component_filter} AND resolution = Unresolved AND type = {{type}} AND priority = Medium AND sprint != {sprint_id}'),
+            ('Backlog Low', f'{component_filter} AND resolution = Unresolved AND type = {{type}} AND priority = Low AND sprint != {sprint_id}'),
+            # Sprint columns (IN current sprint)
+            ('Sprint Critical', f'{component_filter} AND resolution = Unresolved AND type = {{type}} AND priority in (Highest, Critical) AND sprint = {sprint_id}'),
+            ('Sprint High', f'{component_filter} AND resolution = Unresolved AND type = {{type}} AND priority = High AND sprint = {sprint_id}'),
+            ('Sprint Medium', f'{component_filter} AND resolution = Unresolved AND type = {{type}} AND priority = Medium AND sprint = {sprint_id}'),
+            ('Sprint Low', f'{component_filter} AND resolution = Unresolved AND type = {{type}} AND priority = Low AND sprint = {sprint_id}'),
+            # Other metrics
+            ('Total', f'{component_filter} AND resolution = Unresolved AND type = {{type}}'),
+            ('Resolved in last 30 days', f'{component_filter} AND resolved >= {thirty_days_ago} AND type = {{type}}'),
+            ('Added in last 30 days', f'{component_filter} AND created >= {thirty_days_ago} AND type = {{type}}'),
+        ]
+        
+        # Count issues for each criteria and issue type
+        for column_name, jql_template in criteria:
+            # Count Defects (Bugs)
+            jql_defect = f'project = {project_key} {jql_template.format(type=defect_types)}'
+            defect_count = jira.search_issues(jql_defect, maxResults=0).total
+            data['Defects'][column_name] = defect_count
+            
+            # Count Features (Story/Task)
+            jql_feature = f'project = {project_key} {jql_template.format(type=feature_types)}'
+            feature_count = jira.search_issues(jql_feature, maxResults=0).total
+            data['Features'][column_name] = feature_count
+        
+        return data
+    
+    except Exception as e:
+        st.error(f"Error fetching capability status: {str(e)}")
         return None
 
 
@@ -620,6 +735,140 @@ def main():
         
         else:
             st.error(f"Unable to fetch details for {component_name}")
+    
+    # ========================================================================
+    # COMPONENT CAPABILITY STATUS PAGE
+    # ========================================================================
+    elif st.session_state.current_page.startswith('Component Capability Status - '):
+        component_name = st.session_state.selected_component
+        
+        st.title(f"🎯 {component_name} - Component Capability Status")
+        
+        # Manual refresh button
+        col1, col2, col3 = st.columns([2, 1, 1])
+        with col2:
+            if st.button("🔄 Refresh", use_container_width=True):
+                st.rerun()
+        with col3:
+            last_updated = datetime.now().strftime("%H:%M:%S")
+            st.caption(f"Updated: {last_updated}")
+        
+        st.divider()
+        
+        # Connect to Jira
+        with st.spinner("Connecting to Jira..."):
+            jira = get_jira_connection(
+                jira_config['url'],
+                jira_config['email'],
+                jira_config['api_token']
+            )
+        
+        # Validate connection
+        is_connected, message = validate_jira_connection(jira)
+        
+        if not is_connected:
+            st.error(f"❌ {message}")
+            return
+        
+        # Get active sprint info
+        sprint_info = get_active_sprint(jira, jira_config['board_id'])
+        sprint_id = sprint_info['id'] if sprint_info else None
+        
+        if not sprint_id:
+            st.warning("⚠️ No active sprint found. Please create a sprint in Jira.")
+            return
+        
+        # Display subsection title
+        st.subheader("📊 Counts of Open Tickets")
+        
+        # Get capability status data
+        with st.spinner(f"Fetching {component_name} capability status..."):
+            capability_data = get_component_capability_status(jira, jira_config['project_key'], component_name, sprint_id)
+        
+        if capability_data:
+            # Prepare data for display
+            table_data = []
+            
+            # Process Defects (Bugs)
+            defect_row = {'Issue Type': 'Defects'}
+            defect_row.update(capability_data['Defects'])
+            table_data.append(defect_row)
+            
+            # Process Features (Tasks/Stories)
+            feature_row = {'Issue Type': 'Features'}
+            feature_row.update(capability_data['Features'])
+            table_data.append(feature_row)
+            
+            # Create DataFrame
+            df = pd.DataFrame(table_data)
+            
+            # Define column order
+            column_order = [
+                'Issue Type',
+                'Backlog Critical',
+                'Backlog High',
+                'Backlog Medium',
+                'Backlog Low',
+                'Sprint Critical',
+                'Sprint High',
+                'Sprint Medium',
+                'Sprint Low',
+                'Total',
+                'Resolved in last 30 days',
+                'Added in last 30 days'
+            ]
+            
+            # Reorder columns
+            df = df[[col for col in column_order if col in df.columns]]
+            
+            # Display table with column configuration
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    'Issue Type': st.column_config.TextColumn('Issue Type', width='medium'),
+                    'Backlog Critical': st.column_config.NumberColumn('Backlog Critical', format='%d'),
+                    'Backlog High': st.column_config.NumberColumn('Backlog High', format='%d'),
+                    'Backlog Medium': st.column_config.NumberColumn('Backlog Medium', format='%d'),
+                    'Backlog Low': st.column_config.NumberColumn('Backlog Low', format='%d'),
+                    'Sprint Critical': st.column_config.NumberColumn('Sprint Critical', format='%d'),
+                    'Sprint High': st.column_config.NumberColumn('Sprint High', format='%d'),
+                    'Sprint Medium': st.column_config.NumberColumn('Sprint Medium', format='%d'),
+                    'Sprint Low': st.column_config.NumberColumn('Sprint Low', format='%d'),
+                    'Total': st.column_config.NumberColumn('Total', format='%d'),
+                    'Resolved in last 30 days': st.column_config.NumberColumn('Resolved in last 30 days', format='%d'),
+                    'Added in last 30 days': st.column_config.NumberColumn('Added in last 30 days', format='%d'),
+                }
+            )
+            
+            st.divider()
+            
+            # Display summary information
+            st.subheader("📈 Summary")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                total_defects = capability_data['Defects'].get('Total', 0)
+                st.metric("Total Defects", total_defects)
+            
+            with col2:
+                total_features = capability_data['Features'].get('Total', 0)
+                st.metric("Total Features", total_features)
+            
+            with col3:
+                critical_issues = (capability_data['Defects'].get('Sprint Critical', 0) + 
+                                 capability_data['Features'].get('Sprint Critical', 0))
+                st.metric("Sprint Critical Issues", critical_issues)
+            
+            with col4:
+                high_issues = (capability_data['Defects'].get('Sprint High', 0) + 
+                             capability_data['Features'].get('Sprint High', 0))
+                st.metric("Sprint High Issues", high_issues)
+        
+        else:
+            st.error(f"Unable to fetch capability status for {component_name}")
     
     # ========================================================================
     # SPRINT METRICS (Placeholder)
