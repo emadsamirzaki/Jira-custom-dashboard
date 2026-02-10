@@ -466,6 +466,64 @@ def get_component_capability_status(jira, project_key, component_name, sprint_id
         return None
 
 
+def get_component_capability_status_historical(jira, project_key, component_name, sprint_id=None, days_ago=7):
+    """
+    Get capability status for issues as they existed N days ago.
+    Used for week-over-week comparisons.
+    
+    Returns a dictionary with counts for comparison.
+    """
+    try:
+        project = jira.project(project_key)
+        component = None
+        
+        # Find the component by name
+        for comp in project.components:
+            if comp.name == component_name:
+                component = comp
+                break
+        
+        if not component:
+            return None
+        
+        # Initialize counters
+        data = {
+            'Defects': {},
+            'Features': {}
+        }
+        
+        # Base component filter
+        component_filter = f'AND component = {component.id}'
+        
+        # Date range for historical data
+        date_n_days_ago = (datetime.now() - timedelta(days=days_ago)).strftime('%Y-%m-%d')
+        
+        # For historical comparison, get issues created before N days ago (which existed then)
+        criteria = [
+            ('Total', f'{component_filter} AND resolution = Unresolved AND created < {date_n_days_ago}'),
+            ('Added in last 30 days', f'{component_filter} AND created >= {date_n_days_ago} AND created < {(datetime.now() - timedelta(days=days_ago-30)).strftime("%Y-%m-%d")}'),
+            ('Resolved in last 30 days', f'{component_filter} AND resolved >= {date_n_days_ago} AND status != Cancelled AND resolved < {(datetime.now() - timedelta(days=days_ago-30)).strftime("%Y-%m-%d")}'),
+        ]
+        
+        # Count issues for each criteria and issue type
+        for column_name, base_jql in criteria:
+            # Count Defects (Bugs only)
+            jql_defect = f'project = {project_key} {base_jql} AND type = Bug'
+            defect_count = jira.search_issues(jql_defect, maxResults=0).total
+            data['Defects'][column_name] = defect_count
+            
+            # Count Features (Story or Task only)
+            jql_feature = f'project = {project_key} {base_jql} AND (type = Story OR type = Task)'
+            feature_count = jira.search_issues(jql_feature, maxResults=0).total
+            data['Features'][column_name] = feature_count
+        
+        return data
+    
+    except Exception as e:
+        st.error(f"Error fetching historical capability status: {str(e)}")
+        return None
+
+
 def get_critical_high_issues(jira, project_key, component_name, sprint_id=None, sprint_only=False):
     """
     Get detailed information about Critical and High priority issues.
@@ -974,6 +1032,38 @@ def main():
             total_added = defect_data.get('Added in last 30 days', 0) + feature_data.get('Added in last 30 days', 0)
             total_resolved = defect_data.get('Resolved in last 30 days', 0) + feature_data.get('Resolved in last 30 days', 0)
             
+            # Get last week's data for comparison
+            historical_data = get_component_capability_status_historical(jira, jira_config['project_key'], component_name, sprint_id, days_ago=7)
+            
+            # Helper function to generate comparison arrow
+            def get_comparison_arrow(current, previous):
+                if previous == 0:
+                    return ""
+                if current > previous:
+                    return " <span style='color: #d32f2f; font-size: 16px;'>↑</span>"  # Red up arrow
+                elif current < previous:
+                    return " <span style='color: #388e3c; font-size: 16px;'>↓</span>"  # Green down arrow
+                return ""
+            
+            # Calculate comparisons for Total, Added, and Resolved
+            if historical_data:
+                hist_grand_total = historical_data['Defects'].get('Total', 0) + historical_data['Features'].get('Total', 0)
+                hist_total_added = historical_data['Defects'].get('Added in last 30 days', 0) + historical_data['Features'].get('Added in last 30 days', 0)
+                hist_total_resolved = historical_data['Defects'].get('Resolved in last 30 days', 0) + historical_data['Features'].get('Resolved in last 30 days', 0)
+                
+                grand_total_arrow = get_comparison_arrow(grand_total, hist_grand_total)
+                total_added_arrow = get_comparison_arrow(total_added, hist_total_added)
+                total_resolved_arrow = get_comparison_arrow(total_resolved, hist_total_resolved)
+            else:
+                grand_total_arrow = ""
+                total_added_arrow = ""
+                total_resolved_arrow = ""
+            
+            # Format values with arrows
+            grand_total_display = f"{grand_total}{grand_total_arrow}"
+            total_added_display = f"{total_added}{total_added_arrow}"
+            total_resolved_display = f"{total_resolved}{total_resolved_arrow}"
+            
             # Fill in the values
             html_table = html_table.format(
                 # Defects
@@ -1009,9 +1099,9 @@ def main():
                 total_sprint_high=total_sprint_high,
                 total_sprint_med=total_sprint_med,
                 total_sprint_low=total_sprint_low,
-                grand_total=grand_total,
-                total_added=total_added,
-                total_resolved=total_resolved,
+                grand_total=grand_total_display,
+                total_added=total_added_display,
+                total_resolved=total_resolved_display,
             )
             
             # Display the HTML table
