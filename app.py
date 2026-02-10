@@ -484,7 +484,10 @@ def get_component_capability_status_historical(jira, project_key, component_name
                 break
         
         if not component:
+            print(f"DEBUG: Component '{component_name}' not found in project {project_key}")
             return None
+        
+        print(f"DEBUG: Found component '{component_name}' with ID {component.id}")
         
         # Initialize counters
         data = {
@@ -500,6 +503,8 @@ def get_component_capability_status_historical(jira, project_key, component_name
         # For "Added in last 30 days" as of N days ago, we need (N+30) days ago
         date_past_30_days_ago = (datetime.now() - timedelta(days=days_ago+30)).strftime('%Y-%m-%d')
         
+        print(f"DEBUG: Date range - {days_ago} days ago: {date_n_days_ago}, 30+{days_ago} days ago: {date_past_30_days_ago}")
+        
         # For historical comparison, get issues created before N days ago (which existed then)
         criteria = [
             ('Total', f'{component_filter} AND resolution = Unresolved AND created < "{date_n_days_ago}"'),
@@ -513,12 +518,15 @@ def get_component_capability_status_historical(jira, project_key, component_name
             jql_defect = f'project = {project_key} {base_jql} AND type = Bug'
             defect_count = jira.search_issues(jql_defect, maxResults=0).total
             data['Defects'][column_name] = defect_count
+            print(f"DEBUG: {column_name} - Defects: {defect_count}")
             
             # Count Features (Story or Task only)
             jql_feature = f'project = {project_key} {base_jql} AND (type = Story OR type = Task)'
             feature_count = jira.search_issues(jql_feature, maxResults=0).total
             data['Features'][column_name] = feature_count
+            print(f"DEBUG: {column_name} - Features: {feature_count}")
         
+        print(f"DEBUG: Historical data = {data}")
         return data
     
     except Exception as e:
@@ -1040,6 +1048,14 @@ def main():
             # Debug: Check if historical data was retrieved
             if not historical_data:
                 st.warning(f"⚠️ Could not retrieve historical data for trend comparison")
+            else:
+                # Show debug info in expander
+                with st.expander("🔍 Debug: Historical Data", expanded=False):
+                    st.write("Historical Data Retrieved (7 days ago):")
+                    st.write(f"Defects Total: {historical_data['Defects'].get('Total', 0)}")
+                    st.write(f"Features Total: {historical_data['Features'].get('Total', 0)}")
+                    st.write(f"Current Defects Total: {defect_data.get('Total', 0)}")
+                    st.write(f"Current Features Total: {feature_data.get('Total', 0)}")
             
             # Helper function to generate comparison arrow
             def get_comparison_arrow(current, previous):
@@ -1073,6 +1089,9 @@ def main():
                 features_added_arrow = get_comparison_arrow(feature_data.get('Added in last 30 days', 0), hist_features_added)
                 defects_resolved_arrow = get_comparison_arrow(defect_data.get('Resolved in last 30 days', 0), hist_defects_resolved)
                 features_resolved_arrow = get_comparison_arrow(feature_data.get('Resolved in last 30 days', 0), hist_features_resolved)
+                
+                print(f"DEBUG: Defects Total - Current: {defect_data.get('Total', 0)}, Historical: {hist_defects_total}, Arrow: {defects_total_arrow}")
+                print(f"DEBUG: Defects Added - Current: {defect_data.get('Added in last 30 days', 0)}, Historical: {hist_defects_added}, Arrow: {defects_added_arrow}")
             else:
                 grand_total_arrow = ""
                 total_added_arrow = ""
