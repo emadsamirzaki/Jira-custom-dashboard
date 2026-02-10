@@ -637,6 +637,45 @@ def get_critical_high_issues(jira, project_key, component_name, sprint_id=None, 
         return None
 
 
+@st.cache_data(ttl=300)
+def get_flagged_issues(jira, project_key, component_name):
+    """
+    Get all issues marked as Flagged in the component.
+    
+    Args:
+        jira: Jira connection
+        project_key: Project key
+        component_name: Component name to filter by
+    
+    Returns:
+        List of flagged issues with details
+    """
+    try:
+        project = jira.project(project_key)
+        component = None
+        
+        # Find the component by name
+        for comp in project.components:
+            if comp.name == component_name:
+                component = comp
+                break
+        
+        if not component:
+            return None
+        
+        # Search for issues with "Flagged" label in the component
+        component_filter = f'AND component = {component.id}'
+        jql = f'project = {project_key} {component_filter} AND labels = Flagged AND resolution = Unresolved ORDER BY priority DESC, created DESC'
+        
+        issues = jira.search_issues(jql, maxResults=100, expand='changelog')
+        
+        return issues if issues else None
+    
+    except Exception as e:
+        st.error(f"Error fetching flagged issues: {str(e)}")
+        return None
+
+
 # ============================================================================
 # PAGE HANDLERS
 # ============================================================================
@@ -844,10 +883,10 @@ def main():
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("### 📦 Last 5 Released Versions:")
+            st.markdown("##### 📦 Last 5 Released Versions:")
             if released_versions:
                 for version in released_versions:
-                    with st.container(border=True, height=200):
+                    with st.container(border=True, height=160):
                         # Make title clickable
                         version_url = f"{jira_config['url']}/projects/{jira_config['project_key']}/versions/{version['version_id']}/tab/release-report-all-issues"
                         st.markdown(f"[**{version['name']}**]({version_url})", unsafe_allow_html=True)
@@ -858,10 +897,10 @@ def main():
                 st.info("No released versions found.")
         
         with col2:
-            st.markdown("### 🎯 Next 5 Upcoming Versions:")
+            st.markdown("##### 🎯 Next 5 Upcoming Versions:")
             if upcoming_versions:
                 for version in upcoming_versions:
-                    with st.container(border=True, height=200):
+                    with st.container(border=True, height=160):
                         # Make title clickable
                         version_url = f"{jira_config['url']}/projects/{jira_config['project_key']}/versions/{version['version_id']}/tab/release-report-all-issues"
                         st.markdown(f"[**{version['name']}**]({version_url})", unsafe_allow_html=True)
@@ -1483,6 +1522,86 @@ def main():
                     st.markdown(html_table, unsafe_allow_html=True)
                 else:
                     st.info("No critical or high priority issues found in backlog.")
+            
+            st.divider()
+            
+            # RISK SECTION - Flagged issues
+            st.subheader("⚠️ Risk - Flagged Issues")
+            
+            with st.spinner("Fetching flagged issues..."):
+                flagged_issues = get_flagged_issues(jira, jira_config['project_key'], component_name)
+            
+            if flagged_issues:
+                jira_url = jira_config['url'].rstrip('/')
+                
+                # Build styled HTML table for flagged issues
+                html_table = """<style>
+.risk-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+}
+.risk-table th {
+    background-color: #ffe8e8;
+    border: 1px solid #ffcccc;
+    padding: 10px;
+    font-weight: bold;
+    text-align: left;
+    color: #c62828;
+}
+.risk-table td {
+    border: 1px solid #ffcccc;
+    padding: 10px;
+    text-align: left;
+}
+.risk-table a {
+    color: #1f77b4;
+    text-decoration: none;
+    font-weight: bold;
+}
+.risk-table a:hover {
+    text-decoration: underline;
+}
+</style>
+
+<table class="risk-table">
+<tr>
+<th>Issue</th>
+<th>Type</th>
+<th>Summary</th>
+<th>Priority</th>
+<th>Flag Comment/Description</th>
+</tr>
+"""
+                
+                for issue in flagged_issues:
+                    # Get issue type
+                    issue_type = issue.fields.issuetype.name if issue.fields.issuetype else 'N/A'
+                    
+                    # Format summary (truncate if too long)
+                    summary = issue.fields.summary[:50] + ('...' if len(issue.fields.summary) > 50 else '')
+                    
+                    # Create clickable issue link using HTML anchor
+                    issue_link = f'<a href="{jira_url}/browse/{issue.key}" target="_blank">{issue.key}</a>'
+                    priority = issue.fields.priority.name if issue.fields.priority else 'N/A'
+                    
+                    # Get flag comment from issue description or comments
+                    flag_comment = 'No comment'
+                    if issue.fields.description:
+                        flag_comment = issue.fields.description[:100] + ('...' if len(issue.fields.description) > 100 else '')
+                    elif issue.fields.comment and issue.fields.comment.comments:
+                        # Get the most recent comment
+                        latest_comment = issue.fields.comment.comments[-1]
+                        flag_comment = latest_comment.body[:100] + ('...' if len(latest_comment.body) > 100 else '')
+                    
+                    html_table += f"<tr><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{flag_comment}</td></tr>"
+                
+                html_table += "</table>"
+                
+                st.markdown(html_table, unsafe_allow_html=True)
+            else:
+                st.info("✅ No flagged issues found. All systems go!")
         
         else:
             st.error(f"Unable to fetch capability status for {component_name}")
