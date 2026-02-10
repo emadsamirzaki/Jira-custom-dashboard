@@ -495,7 +495,7 @@ def get_critical_high_issues(jira, project_key, component_name, sprint_id=None, 
         
         # Build JQL based on sprint_only flag
         component_filter = f'AND component = {component.id}'
-        base_query = f'project = {project_key} {component_filter} AND resolution = Unresolved AND priority IN (Highest, Critical, High)'
+        base_query = f'project = {project_key} {component_filter} AND resolution = Unresolved AND priority IN (Highest, Critical, High) AND type IN (Story, Task, Bug)'
         
         if sprint_only:
             # Sprint issues only
@@ -980,55 +980,10 @@ def main():
             # Display details section for Critical & High tickets
             st.subheader("🔴 Details - Critical & High Tickets")
             
-            # Create tabs for Backlog and Sprint
-            tab_backlog, tab_sprint = st.tabs(["📋 Backlog", "🏃 Sprint"])
+            # Create tabs for Sprint and Backlog (Sprint first)
+            tab_sprint, tab_backlog = st.tabs(["🏃 Sprint", "📋 Backlog"])
             
-            # BACKLOG DETAILS
-            with tab_backlog:
-                st.write("**Critical and High Priority Issues in Backlog**")
-                
-                with st.spinner("Fetching backlog critical/high issues..."):
-                    backlog_issues = get_critical_high_issues(jira, jira_config['project_key'], component_name, sprint_id, sprint_only=False)
-                
-                if backlog_issues:
-                    import pandas as pd
-                    backlog_data = []
-                    
-                    for issue in backlog_issues:
-                        # Get fix version info
-                        fix_version = 'N/A'
-                        if issue.fields.fixVersions:
-                            fv = issue.fields.fixVersions[0]
-                            release_date = fv.releaseDate if hasattr(fv, 'releaseDate') and fv.releaseDate else 'N/A'
-                            fix_version = f"{fv.name} ({release_date})"
-                        
-                        backlog_data.append({
-                            'Issue': f"{issue.key}",
-                            'Summary': issue.fields.summary[:60] + ('...' if len(issue.fields.summary) > 60 else ''),
-                            'Priority': issue.fields.priority.name if issue.fields.priority else 'N/A',
-                            'Resolution Approach': issue.fields.customfield_10051 if hasattr(issue.fields, 'customfield_10051') else 'N/A',
-                            'Target Completion': issue.fields.duedate if issue.fields.duedate else 'N/A',
-                            'Target Deployment': fix_version
-                        })
-                    
-                    df_backlog = pd.DataFrame(backlog_data)
-                    st.dataframe(
-                        df_backlog,
-                        use_container_width=True,
-                        hide_index=True,
-                        column_config={
-                            'Issue': st.column_config.TextColumn('Issue', width='small'),
-                            'Summary': st.column_config.TextColumn('Summary', width='large'),
-                            'Priority': st.column_config.TextColumn('Priority', width='small'),
-                            'Resolution Approach': st.column_config.TextColumn('Resolution Approach', width='medium'),
-                            'Target Completion': st.column_config.TextColumn('Target Completion', width='medium'),
-                            'Target Deployment': st.column_config.TextColumn('Target Deployment', width='large'),
-                        }
-                    )
-                else:
-                    st.info("No critical or high priority issues found in backlog.")
-            
-            # SPRINT DETAILS
+            # SPRINT DETAILS (First tab)
             with tab_sprint:
                 st.write("**Critical and High Priority Issues in Sprint**")
                 
@@ -1038,6 +993,7 @@ def main():
                 if sprint_issues:
                     import pandas as pd
                     sprint_data = []
+                    jira_url = jira_config['url'].rstrip('/')
                     
                     for issue in sprint_issues:
                         # Get fix version info
@@ -1048,7 +1004,7 @@ def main():
                             fix_version = f"{fv.name} ({release_date})"
                         
                         sprint_data.append({
-                            'Issue': f"{issue.key}",
+                            'Issue': f"[{issue.key}]({jira_url}/browse/{issue.key})",
                             'Summary': issue.fields.summary[:60] + ('...' if len(issue.fields.summary) > 60 else ''),
                             'Priority': issue.fields.priority.name if issue.fields.priority else 'N/A',
                             'Resolution Approach': issue.fields.customfield_10051 if hasattr(issue.fields, 'customfield_10051') else 'N/A',
@@ -1072,6 +1028,52 @@ def main():
                     )
                 else:
                     st.info("No critical or high priority issues found in sprint.")
+            
+            # BACKLOG DETAILS (Second tab)
+            with tab_backlog:
+                st.write("**Critical and High Priority Issues in Backlog**")
+                
+                with st.spinner("Fetching backlog critical/high issues..."):
+                    backlog_issues = get_critical_high_issues(jira, jira_config['project_key'], component_name, sprint_id, sprint_only=False)
+                
+                if backlog_issues:
+                    import pandas as pd
+                    backlog_data = []
+                    jira_url = jira_config['url'].rstrip('/')
+                    
+                    for issue in backlog_issues:
+                        # Get fix version info
+                        fix_version = 'N/A'
+                        if issue.fields.fixVersions:
+                            fv = issue.fields.fixVersions[0]
+                            release_date = fv.releaseDate if hasattr(fv, 'releaseDate') and fv.releaseDate else 'N/A'
+                            fix_version = f"{fv.name} ({release_date})"
+                        
+                        backlog_data.append({
+                            'Issue': f"[{issue.key}]({jira_url}/browse/{issue.key})",
+                            'Summary': issue.fields.summary[:60] + ('...' if len(issue.fields.summary) > 60 else ''),
+                            'Priority': issue.fields.priority.name if issue.fields.priority else 'N/A',
+                            'Resolution Approach': issue.fields.customfield_10051 if hasattr(issue.fields, 'customfield_10051') else 'N/A',
+                            'Target Completion': issue.fields.duedate if issue.fields.duedate else 'N/A',
+                            'Target Deployment': fix_version
+                        })
+                    
+                    df_backlog = pd.DataFrame(backlog_data)
+                    st.dataframe(
+                        df_backlog,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            'Issue': st.column_config.TextColumn('Issue', width='small'),
+                            'Summary': st.column_config.TextColumn('Summary', width='large'),
+                            'Priority': st.column_config.TextColumn('Priority', width='small'),
+                            'Resolution Approach': st.column_config.TextColumn('Resolution Approach', width='medium'),
+                            'Target Completion': st.column_config.TextColumn('Target Completion', width='medium'),
+                            'Target Deployment': st.column_config.TextColumn('Target Deployment', width='large'),
+                        }
+                    )
+                else:
+                    st.info("No critical or high priority issues found in backlog.")
         
         else:
             st.error(f"Unable to fetch capability status for {component_name}")
