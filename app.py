@@ -635,20 +635,32 @@ def main():
                 st.metric("Sprint End Date", end_date)
             
             with col4:
-                # Calculate remaining days
+                # Calculate remaining working days (excluding weekends)
                 remaining_days = "N/A"
                 if isinstance(sprint_info['end_date'], str) and sprint_info['end_date'] != 'Not set':
                     try:
                         end_date_obj = datetime.fromisoformat(sprint_info['end_date'].replace('Z', '+00:00'))
-                        today = datetime.now(end_date_obj.tzinfo)
-                        days_left = (end_date_obj - today).days
-                        remaining_days = str(days_left)
+                        today = datetime.now(end_date_obj.tzinfo).date()
+                        end_date_only = end_date_obj.date()
+                        
+                        # Count working days (Monday=0 to Friday=4)
+                        working_days = 0
+                        current = today
+                        while current <= end_date_only:
+                            if current.weekday() < 5:  # Monday to Friday
+                                working_days += 1
+                            current += timedelta(days=1)
+                        
+                        remaining_days = str(working_days)
                     except:
                         pass
-                st.metric("Days Remaining", remaining_days)
+                st.metric("Working Days Remaining", remaining_days)
             
+            st.write("")  # Extra spacing
             st.divider()
+            st.write("")  # Extra spacing
             st.info(f"Sprint State: **{sprint_info['state']}**")
+            st.write("")  # Extra spacing
         
         else:
             st.warning("No active sprint found. Create a sprint in Jira or check the board ID in config.yaml")
