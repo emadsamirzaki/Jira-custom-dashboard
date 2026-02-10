@@ -994,8 +994,8 @@ def main():
                     jira_url = jira_config['url'].rstrip('/')
                     
                     # Build markdown table with clickable issue links
-                    table_md = "| Issue | Type | Summary | Priority | Target Completion | Target Deployment |\n"
-                    table_md += "|---|---|---|---|---|---|\n"
+                    table_md = "| Issue | Type | Summary | Priority | Resolution Approach | Target Completion | Target Deployment |\n"
+                    table_md += "|---|---|---|---|---|---|---|\n"
                     
                     for issue in sprint_issues:
                         # Get fix version info
@@ -1014,9 +1014,10 @@ def main():
                         # Create clickable issue link
                         issue_link = f"[{issue.key}]({jira_url}/browse/{issue.key})"
                         priority = issue.fields.priority.name if issue.fields.priority else 'N/A'
+                        resolution_approach = issue.fields.customfield_10051 if hasattr(issue.fields, 'customfield_10051') else 'N/A'
                         due_date = issue.fields.duedate if issue.fields.duedate else 'N/A'
                         
-                        table_md += f"| {issue_link} | {issue_type} | {summary} | {priority} | {due_date} | {fix_version} |\n"
+                        table_md += f"| {issue_link} | {issue_type} | {summary} | {priority} | {resolution_approach} | {due_date} | {fix_version} |\n"
                     
                     st.markdown(table_md)
                 else:
@@ -1033,8 +1034,8 @@ def main():
                     jira_url = jira_config['url'].rstrip('/')
                     
                     # Build markdown table with clickable issue links
-                    table_md = "| Issue | Type | Summary | Priority | Target Completion | Target Deployment |\n"
-                    table_md += "|---|---|---|---|---|---|\n"
+                    table_md = "| Issue | Type | Summary | Priority | Resolution Approach | Target Completion | Target Deployment |\n"
+                    table_md += "|---|---|---|---|---|---|---|\n"
                     
                     for issue in backlog_issues:
                         # Get fix version info
@@ -1053,9 +1054,10 @@ def main():
                         # Create clickable issue link
                         issue_link = f"[{issue.key}]({jira_url}/browse/{issue.key})"
                         priority = issue.fields.priority.name if issue.fields.priority else 'N/A'
+                        resolution_approach = issue.fields.customfield_10051 if hasattr(issue.fields, 'customfield_10051') else 'N/A'
                         due_date = issue.fields.duedate if issue.fields.duedate else 'N/A'
                         
-                        table_md += f"| {issue_link} | {issue_type} | {summary} | {priority} | {due_date} | {fix_version} |\n"
+                        table_md += f"| {issue_link} | {issue_type} | {summary} | {priority} | {resolution_approach} | {due_date} | {fix_version} |\n"
                     
                     st.markdown(table_md)
                 else:
