@@ -607,13 +607,12 @@ def main():
             sprint_info = get_active_sprint(jira, jira_config['board_id'])
         
         if sprint_info:
-            col1, col2, col3, col4 = st.columns(4)
+            col1, col2, col3, col4, col5 = st.columns(5)
             
             with col1:
                 st.metric("Sprint Name", sprint_info['name'])
             
-            
-            with col3:
+            with col2:
                 start_date = sprint_info['start_date']
                 if isinstance(start_date, str) and start_date != 'Not set':
                     # Parse and format date
@@ -624,7 +623,7 @@ def main():
                         pass
                 st.metric("Sprint Start Date", start_date)
             
-            with col4:
+            with col3:
                 end_date = sprint_info['end_date']
                 if isinstance(end_date, str) and end_date != 'Not set':
                     # Parse and format date
@@ -634,6 +633,19 @@ def main():
                     except:
                         pass
                 st.metric("Sprint End Date", end_date)
+            
+            with col4:
+                # Calculate remaining days
+                remaining_days = "N/A"
+                if isinstance(sprint_info['end_date'], str) and sprint_info['end_date'] != 'Not set':
+                    try:
+                        end_date_obj = datetime.fromisoformat(sprint_info['end_date'].replace('Z', '+00:00'))
+                        today = datetime.now(end_date_obj.tzinfo)
+                        days_left = (end_date_obj - today).days
+                        remaining_days = str(days_left)
+                    except:
+                        pass
+                st.metric("Days Remaining", remaining_days)
             
             st.divider()
             st.info(f"Sprint State: **{sprint_info['state']}**")
@@ -927,7 +939,7 @@ def main():
                     <td>{total_sprint_high}</td>
                     <td>{total_sprint_med}</td>
                     <td>{total_sprint_low}</td>
-                    <td style="background-color: #ffd700; color: #3d5a80; font-size: 16px;">{grand_total}</td>
+                    <td style="background-color: #c4ac2b; color: #3d5a80; font-size: 16px;">{grand_total}</td>
                     <td>{total_added}</td>
                     <td>{total_resolved}</td>
                 </tr>
