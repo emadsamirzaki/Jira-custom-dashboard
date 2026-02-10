@@ -449,13 +449,13 @@ def get_component_capability_status(jira, project_key, component_name, sprint_id
         
         # Count issues for each criteria and issue type
         for column_name, base_jql in criteria:
-            # Count Defects (Bugs)
+            # Count Defects (Bugs only)
             jql_defect = f'project = {project_key} {base_jql} AND type = Bug'
             defect_count = jira.search_issues(jql_defect, maxResults=0).total
             data['Defects'][column_name] = defect_count
             
-            # Count Features (Story/Task)
-            jql_feature = f'project = {project_key} {base_jql} AND type IN (Story, Task)'
+            # Count Features (Story or Task only)
+            jql_feature = f'project = {project_key} {base_jql} AND (type = Story OR type = Task)'
             feature_count = jira.search_issues(jql_feature, maxResults=0).total
             data['Features'][column_name] = feature_count
         
