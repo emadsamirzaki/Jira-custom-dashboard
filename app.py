@@ -435,12 +435,12 @@ def get_component_capability_status(jira, project_key, component_name, sprint_id
             ('Backlog Critical', f'{component_filter} AND resolution = Unresolved AND priority IN (Highest, Critical) AND (sprint != {sprint_id} OR sprint is EMPTY)'),
             ('Backlog High', f'{component_filter} AND resolution = Unresolved AND priority = High AND (sprint != {sprint_id} OR sprint is EMPTY)'),
             ('Backlog Medium', f'{component_filter} AND resolution = Unresolved AND priority = Medium AND (sprint != {sprint_id} OR sprint is EMPTY)'),
-            ('Backlog Low', f'{component_filter} AND resolution = Unresolved AND priority = Low AND (sprint != {sprint_id} OR sprint is EMPTY)'),
+            ('Backlog Low', f'{component_filter} AND resolution = Unresolved AND priority IN (Low, Lowest) AND (sprint != {sprint_id} OR sprint is EMPTY)'),
             # Sprint columns (IN current sprint)
             ('Sprint Critical', f'{component_filter} AND resolution = Unresolved AND priority IN (Highest, Critical) AND sprint = {sprint_id}'),
             ('Sprint High', f'{component_filter} AND resolution = Unresolved AND priority = High AND sprint = {sprint_id}'),
             ('Sprint Medium', f'{component_filter} AND resolution = Unresolved AND priority = Medium AND sprint = {sprint_id}'),
-            ('Sprint Low', f'{component_filter} AND resolution = Unresolved AND priority = Low AND sprint = {sprint_id}'),
+            ('Sprint Low', f'{component_filter} AND resolution = Unresolved AND priority IN (Low, Lowest) AND sprint = {sprint_id}'),
             # Other metrics
             ('Total', f'{component_filter} AND resolution = Unresolved'),
             ('Resolved in last 30 days', f'{component_filter} AND resolved >= {thirty_days_ago}'),
