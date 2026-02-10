@@ -1048,14 +1048,6 @@ def main():
             # Debug: Check if historical data was retrieved
             if not historical_data:
                 st.warning(f"⚠️ Could not retrieve historical data for trend comparison")
-            else:
-                # Show debug info in expander
-                with st.expander("🔍 Debug: Historical Data", expanded=False):
-                    st.write("Historical Data Retrieved (7 days ago):")
-                    st.write(f"Defects Total: {historical_data['Defects'].get('Total', 0)}")
-                    st.write(f"Features Total: {historical_data['Features'].get('Total', 0)}")
-                    st.write(f"Current Defects Total: {defect_data.get('Total', 0)}")
-                    st.write(f"Current Features Total: {feature_data.get('Total', 0)}")
             
             # Helper function to generate comparison arrow
             def get_comparison_arrow(current, previous):
@@ -1092,6 +1084,10 @@ def main():
                 
                 print(f"DEBUG: Defects Total - Current: {defect_data.get('Total', 0)}, Historical: {hist_defects_total}, Arrow: {defects_total_arrow}")
                 print(f"DEBUG: Defects Added - Current: {defect_data.get('Added in last 30 days', 0)}, Historical: {hist_defects_added}, Arrow: {defects_added_arrow}")
+                print(f"DEBUG: Defects Resolved - Current: {defect_data.get('Resolved in last 30 days', 0)}, Historical: {hist_defects_resolved}, Arrow: {defects_resolved_arrow}")
+                print(f"DEBUG: Features Total - Current: {feature_data.get('Total', 0)}, Historical: {hist_features_total}, Arrow: {features_total_arrow}")
+                print(f"DEBUG: Features Added - Current: {feature_data.get('Added in last 30 days', 0)}, Historical: {hist_features_added}, Arrow: {features_added_arrow}")
+                print(f"DEBUG: Features Resolved - Current: {feature_data.get('Resolved in last 30 days', 0)}, Historical: {hist_features_resolved}, Arrow: {features_resolved_arrow}")
             else:
                 grand_total_arrow = ""
                 total_added_arrow = ""
@@ -1153,6 +1149,29 @@ def main():
                 total_added=total_added_display,
                 total_resolved=total_resolved_display,
             )
+            
+            # Comprehensive debug information showing all comparisons
+            if historical_data:
+                with st.expander("🔍 Debug: Week-over-Week Comparisons", expanded=False):
+                    debug_cols = st.columns(3)
+                    
+                    with debug_cols[0]:
+                        st.write("**DEFECTS**")
+                        st.write(f"Total: {defect_data.get('Total', 0)} vs {historical_data['Defects'].get('Total', 0)} {defects_total_arrow}")
+                        st.write(f"Added: {defect_data.get('Added in last 30 days', 0)} vs {historical_data['Defects'].get('Added in last 30 days', 0)} {defects_added_arrow}")
+                        st.write(f"Resolved: {defect_data.get('Resolved in last 30 days', 0)} vs {historical_data['Defects'].get('Resolved in last 30 days', 0)} {defects_resolved_arrow}")
+                    
+                    with debug_cols[1]:
+                        st.write("**FEATURES**")
+                        st.write(f"Total: {feature_data.get('Total', 0)} vs {historical_data['Features'].get('Total', 0)} {features_total_arrow}")
+                        st.write(f"Added: {feature_data.get('Added in last 30 days', 0)} vs {historical_data['Features'].get('Added in last 30 days', 0)} {features_added_arrow}")
+                        st.write(f"Resolved: {feature_data.get('Resolved in last 30 days', 0)} vs {historical_data['Features'].get('Resolved in last 30 days', 0)} {features_resolved_arrow}")
+                    
+                    with debug_cols[2]:
+                        st.write("**TOTALS**")
+                        st.write(f"Grand Total: {grand_total} vs {historical_data['Defects'].get('Total', 0) + historical_data['Features'].get('Total', 0)} {grand_total_arrow}")
+                        st.write(f"Total Added: {total_added} vs {historical_data['Defects'].get('Added in last 30 days', 0) + historical_data['Features'].get('Added in last 30 days', 0)} {total_added_arrow}")
+                        st.write(f"Total Resolved: {total_resolved} vs {historical_data['Defects'].get('Resolved in last 30 days', 0) + historical_data['Features'].get('Resolved in last 30 days', 0)} {total_resolved_arrow}")
             
             # Display the HTML table
             st.markdown(html_table, unsafe_allow_html=True)
