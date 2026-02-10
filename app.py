@@ -233,6 +233,50 @@ def get_project_components(jira, project_key, preferred_order=None):
         return []
 
 
+def get_release_versions(jira, project_key):
+    """
+    Retrieve released and upcoming versions (fix versions) from the project.
+    Returns two lists: released_versions and upcoming_versions
+    Each version contains: name, description, release_date, status
+    """
+    try:
+        project = jira.project(project_key)
+        versions = project.versions
+        
+        released_versions = []
+        upcoming_versions = []
+        
+        for version in versions:
+            version_info = {
+                'name': version.name,
+                'description': version.description if hasattr(version, 'description') and version.description else 'No description',
+                'release_date': version.releaseDate if hasattr(version, 'releaseDate') and version.releaseDate else 'Not set',
+                'status': 'Released' if version.released else 'Unreleased'
+            }
+            
+            if version.released:
+                released_versions.append(version_info)
+            else:
+                upcoming_versions.append(version_info)
+        
+        # Sort released versions by date (newest first)
+        released_versions.sort(
+            key=lambda x: x['release_date'] if x['release_date'] != 'Not set' else '1970-01-01',
+            reverse=True
+        )
+        
+        # Sort upcoming versions by date (soonest first)
+        upcoming_versions.sort(
+            key=lambda x: x['release_date'] if x['release_date'] != 'Not set' else '9999-12-31',
+        )
+        
+        return released_versions[:5], upcoming_versions[:5]  # Return top 5 each
+    
+    except Exception as e:
+        print(f"Error fetching release versions: {str(e)}")
+        return [], []
+
+
 # ============================================================================
 # SIDEBAR NAVIGATION
 # ============================================================================
@@ -775,6 +819,41 @@ def main():
         
         else:
             st.info("No component issues found in the current sprint.")
+        
+        st.divider()
+        
+        # Display Release Information
+        st.subheader("🚀 Releases & Fix Versions")
+        
+        with st.spinner("Fetching release information..."):
+            released_versions, upcoming_versions = get_release_versions(jira, jira_config['project_key'])
+        
+        # Display in two columns - Released and Upcoming
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write("**📦 Last 5 Released Versions:**")
+            if released_versions:
+                for version in released_versions:
+                    with st.container(border=True):
+                        st.write(f"**{version['name']}**")
+                        if version['release_date'] != 'Not set':
+                            st.caption(f"📅 Released: {version['release_date']}")
+                        st.text(version['description'][:200] + ("..." if len(version['description']) > 200 else ""))
+            else:
+                st.info("No released versions found.")
+        
+        with col2:
+            st.write("**🎯 Next 5 Upcoming Versions:**")
+            if upcoming_versions:
+                for version in upcoming_versions:
+                    with st.container(border=True):
+                        st.write(f"**{version['name']}**")
+                        if version['release_date'] != 'Not set':
+                            st.caption(f"📅 Planned: {version['release_date']}")
+                        st.text(version['description'][:200] + ("..." if len(version['description']) > 200 else ""))
+            else:
+                st.info("No upcoming versions found.")
     
     # ========================================================================
     # SPRINT STATUS - COMPONENT STATUS PAGE
