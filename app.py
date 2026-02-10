@@ -419,8 +419,7 @@ def get_component_capability_status(jira, project_key, component_name, sprint_id
         # Initialize counters
         data = {
             'Defects': {},
-            'Features': {},
-            'Debug': {}  # Add debug data
+            'Features': {}
         }
         
         # Base component filter
@@ -459,56 +458,11 @@ def get_component_capability_status(jira, project_key, component_name, sprint_id
             jql_feature = f'project = {project_key} {base_jql} AND (type = Story OR type = Task)'
             feature_count = jira.search_issues(jql_feature, maxResults=0).total
             data['Features'][column_name] = feature_count
-            
-            # Store debug JQL queries for "Resolved in last 30 days"
-            if column_name == 'Resolved in last 30 days':
-                data['Debug']['jql_defect'] = jql_defect
-                data['Debug']['jql_feature'] = jql_feature
         
         return data
     
     except Exception as e:
         st.error(f"Error fetching capability status: {str(e)}")
-        return None
-
-
-def get_resolved_issues_debug(jira, project_key, component_name, sprint_id=None):
-    """
-    Get detailed list of resolved issues in last 30 days for debugging.
-    """
-    try:
-        project = jira.project(project_key)
-        component = None
-        
-        # Find the component by name
-        for comp in project.components:
-            if comp.name == component_name:
-                component = comp
-                break
-        
-        if not component:
-            return None
-        
-        thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
-        component_filter = f'AND component = {component.id}'
-        
-        # Get Features (Story/Task) - exclude Cancelled status
-        jql_features = f'project = {project_key} {component_filter} AND resolved >= {thirty_days_ago} AND status != Cancelled AND (type = Story OR type = Task)'
-        features = jira.search_issues(jql_features, maxResults=100, expand='changelog')
-        
-        # Get Defects (Bugs) - exclude Cancelled status
-        jql_defects = f'project = {project_key} {component_filter} AND resolved >= {thirty_days_ago} AND status != Cancelled AND type = Bug'
-        defects = jira.search_issues(jql_defects, maxResults=100, expand='changelog')
-        
-        return {
-            'features': features if features else [],
-            'defects': defects if defects else [],
-            'features_count': len(features) if features else 0,
-            'defects_count': len(defects) if defects else 0
-        }
-        
-    except Exception as e:
-        st.error(f"Error fetching debug issues: {str(e)}")
         return None
 
 
@@ -962,8 +916,36 @@ def main():
                     <td>{added_f}</td>
                     <td>{resolved_f}</td>
                 </tr>
+                <!-- Total row -->
+                <tr style="background-color: #f5f5f5; font-weight: bold;">
+                    <td style="text-align: left;">Total</td>
+                    <td>{total_backlog_crit}</td>
+                    <td>{total_backlog_high}</td>
+                    <td>{total_backlog_med}</td>
+                    <td>{total_backlog_low}</td>
+                    <td>{total_sprint_crit}</td>
+                    <td>{total_sprint_high}</td>
+                    <td>{total_sprint_med}</td>
+                    <td>{total_sprint_low}</td>
+                    <td class="total-column">{grand_total}</td>
+                    <td>{total_added}</td>
+                    <td>{total_resolved}</td>
+                </tr>
             </table>
             """
+            
+            # Calculate totals for each column
+            total_backlog_crit = defect_data.get('Backlog Critical', 0) + feature_data.get('Backlog Critical', 0)
+            total_backlog_high = defect_data.get('Backlog High', 0) + feature_data.get('Backlog High', 0)
+            total_backlog_med = defect_data.get('Backlog Medium', 0) + feature_data.get('Backlog Medium', 0)
+            total_backlog_low = defect_data.get('Backlog Low', 0) + feature_data.get('Backlog Low', 0)
+            total_sprint_crit = defect_data.get('Sprint Critical', 0) + feature_data.get('Sprint Critical', 0)
+            total_sprint_high = defect_data.get('Sprint High', 0) + feature_data.get('Sprint High', 0)
+            total_sprint_med = defect_data.get('Sprint Medium', 0) + feature_data.get('Sprint Medium', 0)
+            total_sprint_low = defect_data.get('Sprint Low', 0) + feature_data.get('Sprint Low', 0)
+            grand_total = defect_data.get('Total', 0) + feature_data.get('Total', 0)
+            total_added = defect_data.get('Added in last 30 days', 0) + feature_data.get('Added in last 30 days', 0)
+            total_resolved = defect_data.get('Resolved in last 30 days', 0) + feature_data.get('Resolved in last 30 days', 0)
             
             # Fill in the values
             html_table = html_table.format(
@@ -991,26 +973,22 @@ def main():
                 total_f=feature_data.get('Total', 0),
                 added_f=feature_data.get('Added in last 30 days', 0),
                 resolved_f=feature_data.get('Resolved in last 30 days', 0),
+                # Totals
+                total_backlog_crit=total_backlog_crit,
+                total_backlog_high=total_backlog_high,
+                total_backlog_med=total_backlog_med,
+                total_backlog_low=total_backlog_low,
+                total_sprint_crit=total_sprint_crit,
+                total_sprint_high=total_sprint_high,
+                total_sprint_med=total_sprint_med,
+                total_sprint_low=total_sprint_low,
+                grand_total=grand_total,
+                total_added=total_added,
+                total_resolved=total_resolved,
             )
             
             # Display the HTML table
             st.markdown(html_table, unsafe_allow_html=True)
-            
-            st.divider()
-            
-            # DEBUG: Show resolved issues for verification
-            with st.expander("🔍 Debug: Resolved Issues (Last 30 Days)"):
-                debug_data = get_resolved_issues_debug(jira, jira_config['project_key'], component_name, sprint_id)
-                if debug_data:
-                    st.write(f"**Bugs: {debug_data['defects_count']}**")
-                    if debug_data['defects']:
-                        for issue in debug_data['defects']:
-                            st.write(f"- {issue.key}: {issue.fields.summary[:60]}")
-                    
-                    st.write(f"\n**Features (Story/Task): {debug_data['features_count']}**")
-                    if debug_data['features']:
-                        for issue in debug_data['features']:
-                            st.write(f"- {issue.key} ({issue.fields.issuetype.name}): {issue.fields.summary[:60]}")
             
             st.divider()
             
