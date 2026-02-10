@@ -820,95 +820,135 @@ def main():
         if capability_data:
             # Prepare data for display
             import pandas as pd
-            table_data = []
             
-            # Process Defects (Bugs)
-            defect_row = {'Issue Type': 'Defects'}
-            defect_row.update(capability_data['Defects'])
-            table_data.append(defect_row)
+            # Create a styled HTML table with proper grouping
+            defect_data = capability_data['Defects']
+            feature_data = capability_data['Features']
             
-            # Process Features (Tasks/Stories)
-            feature_row = {'Issue Type': 'Features'}
-            feature_row.update(capability_data['Features'])
-            table_data.append(feature_row)
-            
-            # Create DataFrame
-            df = pd.DataFrame(table_data)
-            
-            # Define reorganized column order: Issue Type, Backlog section, Sprint section, 30-day activity, Total
-            column_order = [
-                'Issue Type',
-                # Backlog section
-                'Backlog Critical',
-                'Backlog High',
-                'Backlog Medium',
-                'Backlog Low',
-                # Sprint section
-                'Sprint Critical',
-                'Sprint High',
-                'Sprint Medium',
-                'Sprint Low',
-                # 30-day activity section
-                'Added in last 30 days',
-                'Resolved in last 30 days',
-                # Total
-                'Total',
-            ]
-            
-            # Reorder columns
-            df = df[[col for col in column_order if col in df.columns]]
-            
-            # Display section headers for grouping
-            st.markdown("""
+            # Create HTML table with merged header cells and grouped sections
+            html_table = """
             <style>
-            .section-header {
-                font-weight: bold;
-                color: #1f77b4;
-                margin-top: 0px;
-                margin-bottom: 0px;
-            }
-            </style>
-            """, unsafe_allow_html=True)
-            
-            col1, col2, col3, col4, col5 = st.columns([1, 1.5, 1.5, 1.2, 0.8])
-            with col1:
-                st.markdown("<p class='section-header'>Type</p>", unsafe_allow_html=True)
-            with col2:
-                st.markdown("<p class='section-header'>📋 Backlog</p>", unsafe_allow_html=True)
-            with col3:
-                st.markdown("<p class='section-header'>🏃 Sprint</p>", unsafe_allow_html=True)
-            with col4:
-                st.markdown("<p class='section-header'>📊 30-Day Activity</p>", unsafe_allow_html=True)
-            with col5:
-                st.markdown("<p class='section-header'>Total</p>", unsafe_allow_html=True)
-            
-            # Display table with enhanced column configuration
-            st.dataframe(
-                df,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    'Issue Type': st.column_config.TextColumn('Issue Type', width='small'),
-                    # Backlog columns
-                    'Backlog Critical': st.column_config.NumberColumn('Crit', format='%d', width='small'),
-                    'Backlog High': st.column_config.NumberColumn('High', format='%d', width='small'),
-                    'Backlog Medium': st.column_config.NumberColumn('Med', format='%d', width='small'),
-                    'Backlog Low': st.column_config.NumberColumn('Low', format='%d', width='small'),
-                    # Sprint columns
-                    'Sprint Critical': st.column_config.NumberColumn('Crit', format='%d', width='small'),
-                    'Sprint High': st.column_config.NumberColumn('High', format='%d', width='small'),
-                    'Sprint Medium': st.column_config.NumberColumn('Med', format='%d', width='small'),
-                    'Sprint Low': st.column_config.NumberColumn('Low', format='%d', width='small'),
-                    # 30-day activity columns
-                    'Added in last 30 days': st.column_config.NumberColumn('Added', format='%d', width='small'),
-                    'Resolved in last 30 days': st.column_config.NumberColumn('Resolved', format='%d', width='small'),
-                    # Total column - will be highlighted
-                    'Total': st.column_config.NumberColumn('Total', format='%d', width='small'),
+                .capability-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-family: Arial, sans-serif;
+                    font-size: 13px;
                 }
+                .capability-table th, .capability-table td {
+                    border: 1px solid #ddd;
+                    padding: 8px;
+                    text-align: center;
+                }
+                .capability-table th {
+                    background-color: #f0f0f0;
+                    font-weight: bold;
+                }
+                .section-header {
+                    background-color: #e3f2fd;
+                    font-weight: bold;
+                    text-align: center;
+                }
+                .type-column {
+                    text-align: left;
+                    background-color: #f9f9f9;
+                    font-weight: bold;
+                }
+                .total-column {
+                    background-color: #fff9c4;
+                    font-weight: bold;
+                    font-size: 16px;
+                }
+                .sub-header {
+                    background-color: #eeeeee;
+                    font-size: 11px;
+                }
+            </style>
+            
+            <table class="capability-table">
+                <!-- Main header row with sections -->
+                <tr>
+                    <th rowspan="2" style="vertical-align: middle;">Issue Type</th>
+                    <th colspan="4" class="section-header">📋 Backlog</th>
+                    <th colspan="4" class="section-header">🏃 Sprint</th>
+                    <th rowspan="2" class="section-header" style="vertical-align: middle;">📊 Total</th>
+                    <th colspan="2" class="section-header">📈 30-Day Activity</th>
+                </tr>
+                <!-- Sub-header row -->
+                <tr>
+                    <td class="sub-header">Crit</td>
+                    <td class="sub-header">High</td>
+                    <td class="sub-header">Med</td>
+                    <td class="sub-header">Low</td>
+                    <td class="sub-header">Crit</td>
+                    <td class="sub-header">High</td>
+                    <td class="sub-header">Med</td>
+                    <td class="sub-header">Low</td>
+                    <td class="sub-header">Added</td>
+                    <td class="sub-header">Resolved</td>
+                </tr>
+                <!-- Defects row -->
+                <tr>
+                    <td class="type-column">Defects</td>
+                    <td>{backlog_crit_d}</td>
+                    <td>{backlog_high_d}</td>
+                    <td>{backlog_med_d}</td>
+                    <td>{backlog_low_d}</td>
+                    <td>{sprint_crit_d}</td>
+                    <td>{sprint_high_d}</td>
+                    <td>{sprint_med_d}</td>
+                    <td>{sprint_low_d}</td>
+                    <td class="total-column">{total_d}</td>
+                    <td>{added_d}</td>
+                    <td>{resolved_d}</td>
+                </tr>
+                <!-- Features row -->
+                <tr>
+                    <td class="type-column">Features</td>
+                    <td>{backlog_crit_f}</td>
+                    <td>{backlog_high_f}</td>
+                    <td>{backlog_med_f}</td>
+                    <td>{backlog_low_f}</td>
+                    <td>{sprint_crit_f}</td>
+                    <td>{sprint_high_f}</td>
+                    <td>{sprint_med_f}</td>
+                    <td>{sprint_low_f}</td>
+                    <td class="total-column">{total_f}</td>
+                    <td>{added_f}</td>
+                    <td>{resolved_f}</td>
+                </tr>
+            </table>
+            """
+            
+            # Fill in the values
+            html_table = html_table.format(
+                # Defects
+                backlog_crit_d=defect_data.get('Backlog Critical', 0),
+                backlog_high_d=defect_data.get('Backlog High', 0),
+                backlog_med_d=defect_data.get('Backlog Medium', 0),
+                backlog_low_d=defect_data.get('Backlog Low', 0),
+                sprint_crit_d=defect_data.get('Sprint Critical', 0),
+                sprint_high_d=defect_data.get('Sprint High', 0),
+                sprint_med_d=defect_data.get('Sprint Medium', 0),
+                sprint_low_d=defect_data.get('Sprint Low', 0),
+                total_d=defect_data.get('Total', 0),
+                added_d=defect_data.get('Added in last 30 days', 0),
+                resolved_d=defect_data.get('Resolved in last 30 days', 0),
+                # Features
+                backlog_crit_f=feature_data.get('Backlog Critical', 0),
+                backlog_high_f=feature_data.get('Backlog High', 0),
+                backlog_med_f=feature_data.get('Backlog Medium', 0),
+                backlog_low_f=feature_data.get('Backlog Low', 0),
+                sprint_crit_f=feature_data.get('Sprint Critical', 0),
+                sprint_high_f=feature_data.get('Sprint High', 0),
+                sprint_med_f=feature_data.get('Sprint Medium', 0),
+                sprint_low_f=feature_data.get('Sprint Low', 0),
+                total_f=feature_data.get('Total', 0),
+                added_f=feature_data.get('Added in last 30 days', 0),
+                resolved_f=feature_data.get('Resolved in last 30 days', 0),
             )
             
-            # Display the data with custom formatting for Total
-            st.markdown("**Column Guide:** Backlog (Crit/High/Med/Low) | Sprint (Crit/High/Med/Low) | 30-Day Activity (Added/Resolved) | **Total**")
+            # Display the HTML table
+            st.markdown(html_table, unsafe_allow_html=True)
             
             st.divider()
             
