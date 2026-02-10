@@ -983,8 +983,8 @@ def main():
                     <td>{sprint_med_d}</td>
                     <td>{sprint_low_d}</td>
                     <td class="total-column">{total_d_with_arrow}</td>
-                    <td>{added_d}</td>
-                    <td>{resolved_d}</td>
+                    <td>{added_d_with_arrow}</td>
+                    <td>{resolved_d_with_arrow}</td>
                 </tr>
                 <!-- Features row -->
                 <tr>
@@ -998,8 +998,8 @@ def main():
                     <td>{sprint_med_f}</td>
                     <td>{sprint_low_f}</td>
                     <td class="total-column">{total_f_with_arrow}</td>
-                    <td>{added_f}</td>
-                    <td>{resolved_f}</td>
+                    <td>{added_f_with_arrow}</td>
+                    <td>{resolved_f_with_arrow}</td>
                 </tr>
                 <!-- Total row -->
                 <tr style="background-color: #9fb6d4; color: white; font-weight: bold; font-size: 14px; text-align: center;">
@@ -1045,15 +1045,19 @@ def main():
                     return " <span style='color: #388e3c; font-size: 16px;'>↓</span>"  # Green down arrow
                 return ""
             
-            # Calculate comparisons for Total, Added, and Resolved
+            # Calculate comparisons for all metrics
             if historical_data:
                 hist_grand_total = historical_data['Defects'].get('Total', 0) + historical_data['Features'].get('Total', 0)
                 hist_total_added = historical_data['Defects'].get('Added in last 30 days', 0) + historical_data['Features'].get('Added in last 30 days', 0)
                 hist_total_resolved = historical_data['Defects'].get('Resolved in last 30 days', 0) + historical_data['Features'].get('Resolved in last 30 days', 0)
                 
-                # Also get defects and features totals individually
+                # Also get defects and features individually for total, added, and resolved
                 hist_defects_total = historical_data['Defects'].get('Total', 0)
                 hist_features_total = historical_data['Features'].get('Total', 0)
+                hist_defects_added = historical_data['Defects'].get('Added in last 30 days', 0)
+                hist_features_added = historical_data['Features'].get('Added in last 30 days', 0)
+                hist_defects_resolved = historical_data['Defects'].get('Resolved in last 30 days', 0)
+                hist_features_resolved = historical_data['Features'].get('Resolved in last 30 days', 0)
                 
                 grand_total_arrow = get_comparison_arrow(grand_total, hist_grand_total)
                 total_added_arrow = get_comparison_arrow(total_added, hist_total_added)
@@ -1061,12 +1065,20 @@ def main():
                 
                 defects_total_arrow = get_comparison_arrow(defect_data.get('Total', 0), hist_defects_total)
                 features_total_arrow = get_comparison_arrow(feature_data.get('Total', 0), hist_features_total)
+                defects_added_arrow = get_comparison_arrow(defect_data.get('Added in last 30 days', 0), hist_defects_added)
+                features_added_arrow = get_comparison_arrow(feature_data.get('Added in last 30 days', 0), hist_features_added)
+                defects_resolved_arrow = get_comparison_arrow(defect_data.get('Resolved in last 30 days', 0), hist_defects_resolved)
+                features_resolved_arrow = get_comparison_arrow(feature_data.get('Resolved in last 30 days', 0), hist_features_resolved)
             else:
                 grand_total_arrow = ""
                 total_added_arrow = ""
                 total_resolved_arrow = ""
                 defects_total_arrow = ""
                 features_total_arrow = ""
+                defects_added_arrow = ""
+                features_added_arrow = ""
+                defects_resolved_arrow = ""
+                features_resolved_arrow = ""
             
             # Format values with arrows
             grand_total_display = f"{grand_total}{grand_total_arrow}"
@@ -1074,6 +1086,10 @@ def main():
             total_resolved_display = f"{total_resolved}{total_resolved_arrow}"
             total_d_display = f"{defect_data.get('Total', 0)}{defects_total_arrow}"
             total_f_display = f"{feature_data.get('Total', 0)}{features_total_arrow}"
+            added_d_display = f"{defect_data.get('Added in last 30 days', 0)}{defects_added_arrow}"
+            resolved_d_display = f"{defect_data.get('Resolved in last 30 days', 0)}{defects_resolved_arrow}"
+            added_f_display = f"{feature_data.get('Added in last 30 days', 0)}{features_added_arrow}"
+            resolved_f_display = f"{feature_data.get('Resolved in last 30 days', 0)}{features_resolved_arrow}"
             
             # Fill in the values
             html_table = html_table.format(
@@ -1087,8 +1103,8 @@ def main():
                 sprint_med_d=defect_data.get('Sprint Medium', 0),
                 sprint_low_d=defect_data.get('Sprint Low', 0),
                 total_d_with_arrow=total_d_display,
-                added_d=defect_data.get('Added in last 30 days', 0),
-                resolved_d=defect_data.get('Resolved in last 30 days', 0),
+                added_d_with_arrow=added_d_display,
+                resolved_d_with_arrow=resolved_d_display,
                 # Features
                 backlog_crit_f=feature_data.get('Backlog Critical', 0),
                 backlog_high_f=feature_data.get('Backlog High', 0),
@@ -1099,8 +1115,8 @@ def main():
                 sprint_med_f=feature_data.get('Sprint Medium', 0),
                 sprint_low_f=feature_data.get('Sprint Low', 0),
                 total_f_with_arrow=total_f_display,
-                added_f=feature_data.get('Added in last 30 days', 0),
-                resolved_f=feature_data.get('Resolved in last 30 days', 0),
+                added_f_with_arrow=added_f_display,
+                resolved_f_with_arrow=resolved_f_display,
                 # Totals
                 total_backlog_crit=total_backlog_crit,
                 total_backlog_high=total_backlog_high,
