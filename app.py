@@ -663,9 +663,10 @@ def get_flagged_issues(_jira, project_key, component_name):
         if not component:
             return None
         
-        # Search for issues with "Flagged" label in the component
+        # Search for issues with Flagged custom field in Jira Cloud
+        # The 'flagged' field in Jira Cloud queries issues with the flag set
         component_filter = f'AND component = {component.id}'
-        jql = f'project = {project_key} {component_filter} AND labels = Flagged AND resolution = Unresolved ORDER BY priority DESC, created DESC'
+        jql = f'project = {project_key} {component_filter} AND flagged is not empty AND resolution = Unresolved ORDER BY priority DESC, created DESC'
         
         issues = _jira.search_issues(jql, maxResults=100, expand='changelog')
         
