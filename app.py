@@ -991,9 +991,11 @@ def main():
                     sprint_issues = get_critical_high_issues(jira, jira_config['project_key'], component_name, sprint_id, sprint_only=True)
                 
                 if sprint_issues:
-                    import pandas as pd
-                    sprint_data = []
                     jira_url = jira_config['url'].rstrip('/')
+                    
+                    # Build markdown table with clickable issue links
+                    table_md = "| Issue | Type | Summary | Priority | Target Completion | Target Deployment |\n"
+                    table_md += "|---|---|---|---|---|---|\n"
                     
                     for issue in sprint_issues:
                         # Get fix version info
@@ -1003,29 +1005,20 @@ def main():
                             release_date = fv.releaseDate if hasattr(fv, 'releaseDate') and fv.releaseDate else 'N/A'
                             fix_version = f"{fv.name} ({release_date})"
                         
-                        sprint_data.append({
-                            'Issue': f"[{issue.key}]({jira_url}/browse/{issue.key})",
-                            'Summary': issue.fields.summary[:60] + ('...' if len(issue.fields.summary) > 60 else ''),
-                            'Priority': issue.fields.priority.name if issue.fields.priority else 'N/A',
-                            'Resolution Approach': issue.fields.customfield_10051 if hasattr(issue.fields, 'customfield_10051') else 'N/A',
-                            'Target Completion': issue.fields.duedate if issue.fields.duedate else 'N/A',
-                            'Target Deployment': fix_version
-                        })
+                        # Get issue type
+                        issue_type = issue.fields.issuetype.name if issue.fields.issuetype else 'N/A'
+                        
+                        # Format summary (truncate if too long)
+                        summary = issue.fields.summary[:50] + ('...' if len(issue.fields.summary) > 50 else '')
+                        
+                        # Create clickable issue link
+                        issue_link = f"[{issue.key}]({jira_url}/browse/{issue.key})"
+                        priority = issue.fields.priority.name if issue.fields.priority else 'N/A'
+                        due_date = issue.fields.duedate if issue.fields.duedate else 'N/A'
+                        
+                        table_md += f"| {issue_link} | {issue_type} | {summary} | {priority} | {due_date} | {fix_version} |\n"
                     
-                    df_sprint = pd.DataFrame(sprint_data)
-                    st.dataframe(
-                        df_sprint,
-                        use_container_width=True,
-                        hide_index=True,
-                        column_config={
-                            'Issue': st.column_config.TextColumn('Issue', width='small'),
-                            'Summary': st.column_config.TextColumn('Summary', width='large'),
-                            'Priority': st.column_config.TextColumn('Priority', width='small'),
-                            'Resolution Approach': st.column_config.TextColumn('Resolution Approach', width='medium'),
-                            'Target Completion': st.column_config.TextColumn('Target Completion', width='medium'),
-                            'Target Deployment': st.column_config.TextColumn('Target Deployment', width='large'),
-                        }
-                    )
+                    st.markdown(table_md)
                 else:
                     st.info("No critical or high priority issues found in sprint.")
             
@@ -1037,9 +1030,11 @@ def main():
                     backlog_issues = get_critical_high_issues(jira, jira_config['project_key'], component_name, sprint_id, sprint_only=False)
                 
                 if backlog_issues:
-                    import pandas as pd
-                    backlog_data = []
                     jira_url = jira_config['url'].rstrip('/')
+                    
+                    # Build markdown table with clickable issue links
+                    table_md = "| Issue | Type | Summary | Priority | Target Completion | Target Deployment |\n"
+                    table_md += "|---|---|---|---|---|---|\n"
                     
                     for issue in backlog_issues:
                         # Get fix version info
@@ -1049,29 +1044,20 @@ def main():
                             release_date = fv.releaseDate if hasattr(fv, 'releaseDate') and fv.releaseDate else 'N/A'
                             fix_version = f"{fv.name} ({release_date})"
                         
-                        backlog_data.append({
-                            'Issue': f"[{issue.key}]({jira_url}/browse/{issue.key})",
-                            'Summary': issue.fields.summary[:60] + ('...' if len(issue.fields.summary) > 60 else ''),
-                            'Priority': issue.fields.priority.name if issue.fields.priority else 'N/A',
-                            'Resolution Approach': issue.fields.customfield_10051 if hasattr(issue.fields, 'customfield_10051') else 'N/A',
-                            'Target Completion': issue.fields.duedate if issue.fields.duedate else 'N/A',
-                            'Target Deployment': fix_version
-                        })
+                        # Get issue type
+                        issue_type = issue.fields.issuetype.name if issue.fields.issuetype else 'N/A'
+                        
+                        # Format summary (truncate if too long)
+                        summary = issue.fields.summary[:50] + ('...' if len(issue.fields.summary) > 50 else '')
+                        
+                        # Create clickable issue link
+                        issue_link = f"[{issue.key}]({jira_url}/browse/{issue.key})"
+                        priority = issue.fields.priority.name if issue.fields.priority else 'N/A'
+                        due_date = issue.fields.duedate if issue.fields.duedate else 'N/A'
+                        
+                        table_md += f"| {issue_link} | {issue_type} | {summary} | {priority} | {due_date} | {fix_version} |\n"
                     
-                    df_backlog = pd.DataFrame(backlog_data)
-                    st.dataframe(
-                        df_backlog,
-                        use_container_width=True,
-                        hide_index=True,
-                        column_config={
-                            'Issue': st.column_config.TextColumn('Issue', width='small'),
-                            'Summary': st.column_config.TextColumn('Summary', width='large'),
-                            'Priority': st.column_config.TextColumn('Priority', width='small'),
-                            'Resolution Approach': st.column_config.TextColumn('Resolution Approach', width='medium'),
-                            'Target Completion': st.column_config.TextColumn('Target Completion', width='medium'),
-                            'Target Deployment': st.column_config.TextColumn('Target Deployment', width='large'),
-                        }
-                    )
+                    st.markdown(table_md)
                 else:
                     st.info("No critical or high priority issues found in backlog.")
         
