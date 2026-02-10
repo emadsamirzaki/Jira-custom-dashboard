@@ -419,7 +419,8 @@ def get_component_capability_status(jira, project_key, component_name, sprint_id
         # Initialize counters
         data = {
             'Defects': {},
-            'Features': {}
+            'Features': {},
+            'Debug': {}  # Add debug data
         }
         
         # Base component filter
@@ -458,11 +459,56 @@ def get_component_capability_status(jira, project_key, component_name, sprint_id
             jql_feature = f'project = {project_key} {base_jql} AND (type = Story OR type = Task)'
             feature_count = jira.search_issues(jql_feature, maxResults=0).total
             data['Features'][column_name] = feature_count
+            
+            # Store debug JQL queries for "Resolved in last 30 days"
+            if column_name == 'Resolved in last 30 days':
+                data['Debug']['jql_defect'] = jql_defect
+                data['Debug']['jql_feature'] = jql_feature
         
         return data
     
     except Exception as e:
         st.error(f"Error fetching capability status: {str(e)}")
+        return None
+
+
+def get_resolved_issues_debug(jira, project_key, component_name, sprint_id=None):
+    """
+    Get detailed list of resolved issues in last 30 days for debugging.
+    """
+    try:
+        project = jira.project(project_key)
+        component = None
+        
+        # Find the component by name
+        for comp in project.components:
+            if comp.name == component_name:
+                component = comp
+                break
+        
+        if not component:
+            return None
+        
+        thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        component_filter = f'AND component = {component.id}'
+        
+        # Get Features (Story/Task)
+        jql_features = f'project = {project_key} {component_filter} AND resolved >= {thirty_days_ago} AND (type = Story OR type = Task)'
+        features = jira.search_issues(jql_features, maxResults=100, expand='changelog')
+        
+        # Get Defects (Bugs)
+        jql_defects = f'project = {project_key} {component_filter} AND resolved >= {thirty_days_ago} AND type = Bug'
+        defects = jira.search_issues(jql_defects, maxResults=100, expand='changelog')
+        
+        return {
+            'features': features if features else [],
+            'defects': defects if defects else [],
+            'features_count': len(features) if features else 0,
+            'defects_count': len(defects) if defects else 0
+        }
+        
+    except Exception as e:
+        st.error(f"Error fetching debug issues: {str(e)}")
         return None
 
 
@@ -949,6 +995,22 @@ def main():
             
             # Display the HTML table
             st.markdown(html_table, unsafe_allow_html=True)
+            
+            st.divider()
+            
+            # DEBUG: Show resolved issues for verification
+            with st.expander("🔍 Debug: Resolved Issues (Last 30 Days)"):
+                debug_data = get_resolved_issues_debug(jira, jira_config['project_key'], component_name, sprint_id)
+                if debug_data:
+                    st.write(f"**Bugs: {debug_data['defects_count']}**")
+                    if debug_data['defects']:
+                        for issue in debug_data['defects']:
+                            st.write(f"- {issue.key}: {issue.fields.summary[:60]}")
+                    
+                    st.write(f"\n**Features (Story/Task): {debug_data['features_count']}**")
+                    if debug_data['features']:
+                        for issue in debug_data['features']:
+                            st.write(f"- {issue.key} ({issue.fields.issuetype.name}): {issue.fields.summary[:60]}")
             
             st.divider()
             
