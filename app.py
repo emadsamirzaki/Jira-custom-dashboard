@@ -638,12 +638,12 @@ def get_critical_high_issues(jira, project_key, component_name, sprint_id=None, 
 
 
 @st.cache_data(ttl=300)
-def get_flagged_issues(jira, project_key, component_name):
+def get_flagged_issues(_jira, project_key, component_name):
     """
     Get all issues marked as Flagged in the component.
     
     Args:
-        jira: Jira connection
+        _jira: Jira connection
         project_key: Project key
         component_name: Component name to filter by
     
@@ -651,7 +651,7 @@ def get_flagged_issues(jira, project_key, component_name):
         List of flagged issues with details
     """
     try:
-        project = jira.project(project_key)
+        project = _jira.project(project_key)
         component = None
         
         # Find the component by name
@@ -667,7 +667,7 @@ def get_flagged_issues(jira, project_key, component_name):
         component_filter = f'AND component = {component.id}'
         jql = f'project = {project_key} {component_filter} AND labels = Flagged AND resolution = Unresolved ORDER BY priority DESC, created DESC'
         
-        issues = jira.search_issues(jql, maxResults=100, expand='changelog')
+        issues = _jira.search_issues(jql, maxResults=100, expand='changelog')
         
         return issues if issues else None
     
