@@ -828,40 +828,40 @@ def main():
             # Create HTML table with merged header cells and grouped sections
             html_table = """
             <style>
-                .capability-table {
+                .capability-table {{
                     width: 100%;
                     border-collapse: collapse;
                     font-family: Arial, sans-serif;
                     font-size: 13px;
-                }
-                .capability-table th, .capability-table td {
+                }}
+                .capability-table th, .capability-table td {{
                     border: 1px solid #ddd;
                     padding: 8px;
                     text-align: center;
-                }
-                .capability-table th {
+                }}
+                .capability-table th {{
                     background-color: #f0f0f0;
                     font-weight: bold;
-                }
-                .section-header {
+                }}
+                .section-header {{
                     background-color: #e3f2fd;
                     font-weight: bold;
                     text-align: center;
-                }
-                .type-column {
+                }}
+                .type-column {{
                     text-align: left;
                     background-color: #f9f9f9;
                     font-weight: bold;
-                }
-                .total-column {
+                }}
+                .total-column {{
                     background-color: #fff9c4;
                     font-weight: bold;
                     font-size: 16px;
-                }
-                .sub-header {
+                }}
+                .sub-header {{
                     background-color: #eeeeee;
                     font-size: 11px;
-                }
+                }}
             </style>
             
             <table class="capability-table">
