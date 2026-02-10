@@ -917,8 +917,8 @@ def main():
                     <td>{resolved_f}</td>
                 </tr>
                 <!-- Total row -->
-                <tr style="background-color: #f5f5f5; font-weight: bold;">
-                    <td style="text-align: left;">Total</td>
+                <tr style="background-color: #3d5a80; color: white; font-weight: bold; font-size: 14px; text-align: center;">
+                    <td style="text-align: center; font-weight: bold;">📊 Total</td>
                     <td>{total_backlog_crit}</td>
                     <td>{total_backlog_high}</td>
                     <td>{total_backlog_med}</td>
@@ -927,7 +927,7 @@ def main():
                     <td>{total_sprint_high}</td>
                     <td>{total_sprint_med}</td>
                     <td>{total_sprint_low}</td>
-                    <td class="total-column">{grand_total}</td>
+                    <td style="background-color: #ffd700; color: #3d5a80; font-size: 16px;">{grand_total}</td>
                     <td>{total_added}</td>
                     <td>{total_resolved}</td>
                 </tr>
