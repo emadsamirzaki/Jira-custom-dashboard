@@ -668,13 +668,44 @@ def get_flagged_issues(_jira, project_key, component_name):
         component_filter = f'AND component = {component.id}'
         jql = f'project = {project_key} {component_filter} AND flagged is not empty AND resolution = Unresolved ORDER BY priority DESC, created DESC'
         
-        issues = _jira.search_issues(jql, maxResults=100, expand='changelog')
+        # Expand changelog and comments to get full comment details
+        issues = _jira.search_issues(jql, maxResults=100, expand='changelog,comments')
         
         return issues if issues else None
     
     except Exception as e:
         st.error(f"Error fetching flagged issues: {str(e)}")
         return None
+
+
+def get_flagged_comment(issue):
+    """
+    Extract the comment associated with the flag from an issue.
+    
+    Args:
+        issue: Jira issue object
+    
+    Returns:
+        String with the flagged comment body, or N/A if not found
+    """
+    try:
+        # Try to get flag comment from issue comments
+        if issue.fields.comment and issue.fields.comment.comments:
+            # Return the most recent comment (likely related to the flag)
+            latest_comment = issue.fields.comment.comments[-1]
+            comment_body = latest_comment.body if latest_comment.body else 'No comment text'
+            # Truncate at 150 chars for display
+            return comment_body[:150] + ('...' if len(comment_body) > 150 else '')
+        
+        # Fallback to issue description if no comments
+        elif issue.fields.description:
+            desc = issue.fields.description
+            return desc[:150] + ('...' if len(desc) > 150 else '')
+        
+        return 'No comment'
+    
+    except Exception as e:
+        return 'Error retrieving comment'
 
 
 # ============================================================================
@@ -1587,14 +1618,8 @@ def main():
                     issue_link = f'<a href="{jira_url}/browse/{issue.key}" target="_blank">{issue.key}</a>'
                     priority = issue.fields.priority.name if issue.fields.priority else 'N/A'
                     
-                    # Get flag comment from issue description or comments
-                    flag_comment = 'No comment'
-                    if issue.fields.description:
-                        flag_comment = issue.fields.description[:100] + ('...' if len(issue.fields.description) > 100 else '')
-                    elif issue.fields.comment and issue.fields.comment.comments:
-                        # Get the most recent comment
-                        latest_comment = issue.fields.comment.comments[-1]
-                        flag_comment = latest_comment.body[:100] + ('...' if len(latest_comment.body) > 100 else '')
+                    # Get the flagged comment using helper function
+                    flag_comment = get_flagged_comment(issue)
                     
                     html_table += f"<tr><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{flag_comment}</td></tr>"
                 
