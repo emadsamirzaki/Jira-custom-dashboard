@@ -1156,22 +1156,22 @@ def main():
                     debug_cols = st.columns(3)
                     
                     with debug_cols[0]:
-                        st.write("**DEFECTS**")
-                        st.write(f"Total: {defect_data.get('Total', 0)} vs {historical_data['Defects'].get('Total', 0)} {defects_total_arrow}")
-                        st.write(f"Added: {defect_data.get('Added in last 30 days', 0)} vs {historical_data['Defects'].get('Added in last 30 days', 0)} {defects_added_arrow}")
-                        st.write(f"Resolved: {defect_data.get('Resolved in last 30 days', 0)} vs {historical_data['Defects'].get('Resolved in last 30 days', 0)} {defects_resolved_arrow}")
+                        st.markdown("**DEFECTS**")
+                        st.markdown(f"Total: {defect_data.get('Total', 0)} vs {historical_data['Defects'].get('Total', 0)} {defects_total_arrow}", unsafe_allow_html=True)
+                        st.markdown(f"Added: {defect_data.get('Added in last 30 days', 0)} vs {historical_data['Defects'].get('Added in last 30 days', 0)} {defects_added_arrow}", unsafe_allow_html=True)
+                        st.markdown(f"Resolved: {defect_data.get('Resolved in last 30 days', 0)} vs {historical_data['Defects'].get('Resolved in last 30 days', 0)} {defects_resolved_arrow}", unsafe_allow_html=True)
                     
                     with debug_cols[1]:
-                        st.write("**FEATURES**")
-                        st.write(f"Total: {feature_data.get('Total', 0)} vs {historical_data['Features'].get('Total', 0)} {features_total_arrow}")
-                        st.write(f"Added: {feature_data.get('Added in last 30 days', 0)} vs {historical_data['Features'].get('Added in last 30 days', 0)} {features_added_arrow}")
-                        st.write(f"Resolved: {feature_data.get('Resolved in last 30 days', 0)} vs {historical_data['Features'].get('Resolved in last 30 days', 0)} {features_resolved_arrow}")
+                        st.markdown("**FEATURES**")
+                        st.markdown(f"Total: {feature_data.get('Total', 0)} vs {historical_data['Features'].get('Total', 0)} {features_total_arrow}", unsafe_allow_html=True)
+                        st.markdown(f"Added: {feature_data.get('Added in last 30 days', 0)} vs {historical_data['Features'].get('Added in last 30 days', 0)} {features_added_arrow}", unsafe_allow_html=True)
+                        st.markdown(f"Resolved: {feature_data.get('Resolved in last 30 days', 0)} vs {historical_data['Features'].get('Resolved in last 30 days', 0)} {features_resolved_arrow}", unsafe_allow_html=True)
                     
                     with debug_cols[2]:
-                        st.write("**TOTALS**")
-                        st.write(f"Grand Total: {grand_total} vs {historical_data['Defects'].get('Total', 0) + historical_data['Features'].get('Total', 0)} {grand_total_arrow}")
-                        st.write(f"Total Added: {total_added} vs {historical_data['Defects'].get('Added in last 30 days', 0) + historical_data['Features'].get('Added in last 30 days', 0)} {total_added_arrow}")
-                        st.write(f"Total Resolved: {total_resolved} vs {historical_data['Defects'].get('Resolved in last 30 days', 0) + historical_data['Features'].get('Resolved in last 30 days', 0)} {total_resolved_arrow}")
+                        st.markdown("**TOTALS**")
+                        st.markdown(f"Grand Total: {grand_total} vs {historical_data['Defects'].get('Total', 0) + historical_data['Features'].get('Total', 0)} {grand_total_arrow}", unsafe_allow_html=True)
+                        st.markdown(f"Total Added: {total_added} vs {historical_data['Defects'].get('Added in last 30 days', 0) + historical_data['Features'].get('Added in last 30 days', 0)} {total_added_arrow}", unsafe_allow_html=True)
+                        st.markdown(f"Total Resolved: {total_resolved} vs {historical_data['Defects'].get('Resolved in last 30 days', 0) + historical_data['Features'].get('Resolved in last 30 days', 0)} {total_resolved_arrow}", unsafe_allow_html=True)
             
             # Display the HTML table
             st.markdown(html_table, unsafe_allow_html=True)
