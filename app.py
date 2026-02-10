@@ -835,45 +835,80 @@ def main():
             # Create DataFrame
             df = pd.DataFrame(table_data)
             
-            # Define column order
+            # Define reorganized column order: Issue Type, Backlog section, Sprint section, 30-day activity, Total
             column_order = [
                 'Issue Type',
+                # Backlog section
                 'Backlog Critical',
                 'Backlog High',
                 'Backlog Medium',
                 'Backlog Low',
+                # Sprint section
                 'Sprint Critical',
                 'Sprint High',
                 'Sprint Medium',
                 'Sprint Low',
-                'Total',
+                # 30-day activity section
+                'Added in last 30 days',
                 'Resolved in last 30 days',
-                'Added in last 30 days'
+                # Total
+                'Total',
             ]
             
             # Reorder columns
             df = df[[col for col in column_order if col in df.columns]]
             
-            # Display table with column configuration
+            # Display section headers for grouping
+            st.markdown("""
+            <style>
+            .section-header {
+                font-weight: bold;
+                color: #1f77b4;
+                margin-top: 0px;
+                margin-bottom: 0px;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            col1, col2, col3, col4, col5 = st.columns([1, 1.5, 1.5, 1.2, 0.8])
+            with col1:
+                st.markdown("<p class='section-header'>Type</p>", unsafe_allow_html=True)
+            with col2:
+                st.markdown("<p class='section-header'>📋 Backlog</p>", unsafe_allow_html=True)
+            with col3:
+                st.markdown("<p class='section-header'>🏃 Sprint</p>", unsafe_allow_html=True)
+            with col4:
+                st.markdown("<p class='section-header'>📊 30-Day Activity</p>", unsafe_allow_html=True)
+            with col5:
+                st.markdown("<p class='section-header'>Total</p>", unsafe_allow_html=True)
+            
+            # Display table with enhanced column configuration
             st.dataframe(
                 df,
                 use_container_width=True,
                 hide_index=True,
                 column_config={
-                    'Issue Type': st.column_config.TextColumn('Issue Type', width='medium'),
-                    'Backlog Critical': st.column_config.NumberColumn('Backlog Critical', format='%d'),
-                    'Backlog High': st.column_config.NumberColumn('Backlog High', format='%d'),
-                    'Backlog Medium': st.column_config.NumberColumn('Backlog Medium', format='%d'),
-                    'Backlog Low': st.column_config.NumberColumn('Backlog Low', format='%d'),
-                    'Sprint Critical': st.column_config.NumberColumn('Sprint Critical', format='%d'),
-                    'Sprint High': st.column_config.NumberColumn('Sprint High', format='%d'),
-                    'Sprint Medium': st.column_config.NumberColumn('Sprint Medium', format='%d'),
-                    'Sprint Low': st.column_config.NumberColumn('Sprint Low', format='%d'),
-                    'Total': st.column_config.NumberColumn('Total', format='%d'),
-                    'Resolved in last 30 days': st.column_config.NumberColumn('Resolved in last 30 days', format='%d'),
-                    'Added in last 30 days': st.column_config.NumberColumn('Added in last 30 days', format='%d'),
+                    'Issue Type': st.column_config.TextColumn('Issue Type', width='small'),
+                    # Backlog columns
+                    'Backlog Critical': st.column_config.NumberColumn('Crit', format='%d', width='small'),
+                    'Backlog High': st.column_config.NumberColumn('High', format='%d', width='small'),
+                    'Backlog Medium': st.column_config.NumberColumn('Med', format='%d', width='small'),
+                    'Backlog Low': st.column_config.NumberColumn('Low', format='%d', width='small'),
+                    # Sprint columns
+                    'Sprint Critical': st.column_config.NumberColumn('Crit', format='%d', width='small'),
+                    'Sprint High': st.column_config.NumberColumn('High', format='%d', width='small'),
+                    'Sprint Medium': st.column_config.NumberColumn('Med', format='%d', width='small'),
+                    'Sprint Low': st.column_config.NumberColumn('Low', format='%d', width='small'),
+                    # 30-day activity columns
+                    'Added in last 30 days': st.column_config.NumberColumn('Added', format='%d', width='small'),
+                    'Resolved in last 30 days': st.column_config.NumberColumn('Resolved', format='%d', width='small'),
+                    # Total column - will be highlighted
+                    'Total': st.column_config.NumberColumn('Total', format='%d', width='small'),
                 }
             )
+            
+            # Display the data with custom formatting for Total
+            st.markdown("**Column Guide:** Backlog (Crit/High/Med/Low) | Sprint (Crit/High/Med/Low) | 30-Day Activity (Added/Resolved) | **Total**")
             
             st.divider()
             
