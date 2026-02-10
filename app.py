@@ -715,7 +715,7 @@ def main():
                 st.text_area(
                     "Project Description",
                     value=project_info['description'],
-                    height=100,
+                    height=200,
                     disabled=True
                 )
         else:
@@ -844,10 +844,10 @@ def main():
         col1, col2 = st.columns(2)
         
         with col1:
-            st.write("**📦 Last 5 Released Versions:**")
+            st.markdown("### 📦 Last 5 Released Versions:")
             if released_versions:
                 for version in released_versions:
-                    with st.container(border=True, height=250):
+                    with st.container(border=True, height=200):
                         # Make title clickable
                         version_url = f"{jira_config['url']}/projects/{jira_config['project_key']}/versions/{version['version_id']}/tab/release-report-all-issues"
                         st.markdown(f"[**{version['name']}**]({version_url})", unsafe_allow_html=True)
@@ -858,10 +858,10 @@ def main():
                 st.info("No released versions found.")
         
         with col2:
-            st.write("**🎯 Next 5 Upcoming Versions:**")
+            st.markdown("### 🎯 Next 5 Upcoming Versions:")
             if upcoming_versions:
                 for version in upcoming_versions:
-                    with st.container(border=True, height=250):
+                    with st.container(border=True, height=200):
                         # Make title clickable
                         version_url = f"{jira_config['url']}/projects/{jira_config['project_key']}/versions/{version['version_id']}/tab/release-report-all-issues"
                         st.markdown(f"[**{version['name']}**]({version_url})", unsafe_allow_html=True)
