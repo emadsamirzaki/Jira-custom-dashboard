@@ -994,47 +994,46 @@ def main():
                     jira_url = jira_config['url'].rstrip('/')
                     
                     # Build styled HTML table with clickable issue links
-                    html_table = """
-                    <style>
-                        .details-table {{
-                            width: 100%;
-                            border-collapse: collapse;
-                            font-family: Arial, sans-serif;
-                            font-size: 13px;
-                        }}
-                        .details-table th {{
-                            background-color: #f0f0f0;
-                            border: 1px solid #ddd;
-                            padding: 10px;
-                            font-weight: bold;
-                            text-align: left;
-                        }}
-                        .details-table td {{
-                            border: 1px solid #ddd;
-                            padding: 10px;
-                            text-align: left;
-                        }}
-                        .details-table a {{
-                            color: #1f77b4;
-                            text-decoration: none;
-                            font-weight: bold;
-                        }}
-                        .details-table a:hover {{
-                            text-decoration: underline;
-                        }}
-                    </style>
-                    
-                    <table class="details-table">
-                        <tr>
-                            <th>Issue</th>
-                            <th>Type</th>
-                            <th>Summary</th>
-                            <th>Priority</th>
-                            <th>Resolution Approach</th>
-                            <th>Target Completion</th>
-                            <th>Target Deployment</th>
-                        </tr>
-                    """
+                    html_table = """<style>
+.details-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+}
+.details-table th {
+    background-color: #f0f0f0;
+    border: 1px solid #ddd;
+    padding: 10px;
+    font-weight: bold;
+    text-align: left;
+}
+.details-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+}
+.details-table a {
+    color: #1f77b4;
+    text-decoration: none;
+    font-weight: bold;
+}
+.details-table a:hover {
+    text-decoration: underline;
+}
+</style>
+
+<table class="details-table">
+<tr>
+<th>Issue</th>
+<th>Type</th>
+<th>Summary</th>
+<th>Priority</th>
+<th>Resolution Approach</th>
+<th>Target Completion</th>
+<th>Target Deployment</th>
+</tr>
+"""
                     
                     for issue in sprint_issues:
                         # Get fix version info
@@ -1056,21 +1055,9 @@ def main():
                         resolution_approach = issue.fields.customfield_10051 if hasattr(issue.fields, 'customfield_10051') else 'N/A'
                         due_date = issue.fields.duedate if issue.fields.duedate else 'N/A'
                         
-                        html_table += f"""
-                        <tr>
-                            <td>{issue_link}</td>
-                            <td>{issue_type}</td>
-                            <td>{summary}</td>
-                            <td>{priority}</td>
-                            <td>{resolution_approach}</td>
-                            <td>{due_date}</td>
-                            <td>{fix_version}</td>
-                        </tr>
-                        """
+                        html_table += f"<tr><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{resolution_approach}</td><td>{due_date}</td><td>{fix_version}</td></tr>"
                     
-                    html_table += """
-                    </table>
-                    """
+                    html_table += "</table>"
                     
                     st.markdown(html_table, unsafe_allow_html=True)
                 else:
@@ -1087,47 +1074,46 @@ def main():
                     jira_url = jira_config['url'].rstrip('/')
                     
                     # Build styled HTML table with clickable issue links
-                    html_table = """
-                    <style>
-                        .details-table {{
-                            width: 100%;
-                            border-collapse: collapse;
-                            font-family: Arial, sans-serif;
-                            font-size: 13px;
-                        }}
-                        .details-table th {{
-                            background-color: #f0f0f0;
-                            border: 1px solid #ddd;
-                            padding: 10px;
-                            font-weight: bold;
-                            text-align: left;
-                        }}
-                        .details-table td {{
-                            border: 1px solid #ddd;
-                            padding: 10px;
-                            text-align: left;
-                        }}
-                        .details-table a {{
-                            color: #1f77b4;
-                            text-decoration: none;
-                            font-weight: bold;
-                        }}
-                        .details-table a:hover {{
-                            text-decoration: underline;
-                        }}
-                    </style>
-                    
-                    <table class="details-table">
-                        <tr>
-                            <th>Issue</th>
-                            <th>Type</th>
-                            <th>Summary</th>
-                            <th>Priority</th>
-                            <th>Resolution Approach</th>
-                            <th>Target Completion</th>
-                            <th>Target Deployment</th>
-                        </tr>
-                    """
+                    html_table = """<style>
+.details-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+}
+.details-table th {
+    background-color: #f0f0f0;
+    border: 1px solid #ddd;
+    padding: 10px;
+    font-weight: bold;
+    text-align: left;
+}
+.details-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+}
+.details-table a {
+    color: #1f77b4;
+    text-decoration: none;
+    font-weight: bold;
+}
+.details-table a:hover {
+    text-decoration: underline;
+}
+</style>
+
+<table class="details-table">
+<tr>
+<th>Issue</th>
+<th>Type</th>
+<th>Summary</th>
+<th>Priority</th>
+<th>Resolution Approach</th>
+<th>Target Completion</th>
+<th>Target Deployment</th>
+</tr>
+"""
                     
                     for issue in backlog_issues:
                         # Get fix version info
@@ -1149,21 +1135,9 @@ def main():
                         resolution_approach = issue.fields.customfield_10051 if hasattr(issue.fields, 'customfield_10051') else 'N/A'
                         due_date = issue.fields.duedate if issue.fields.duedate else 'N/A'
                         
-                        html_table += f"""
-                        <tr>
-                            <td>{issue_link}</td>
-                            <td>{issue_type}</td>
-                            <td>{summary}</td>
-                            <td>{priority}</td>
-                            <td>{resolution_approach}</td>
-                            <td>{due_date}</td>
-                            <td>{fix_version}</td>
-                        </tr>
-                        """
+                        html_table += f"<tr><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{resolution_approach}</td><td>{due_date}</td><td>{fix_version}</td></tr>"
                     
-                    html_table += """
-                    </table>
-                    """
+                    html_table += "</table>"
                     
                     st.markdown(html_table, unsafe_allow_html=True)
                 else:
