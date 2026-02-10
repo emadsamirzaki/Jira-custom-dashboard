@@ -607,10 +607,13 @@ def main():
             sprint_info = get_active_sprint(jira, jira_config['board_id'])
         
         if sprint_info:
-            col1, col2, col3, col4, col5 = st.columns(5)
+            col1, spacer1, col2, col3, col4 = st.columns([1.2, 0.3, 1.5, 1.5, 1.5])
             
             with col1:
                 st.metric("Sprint Name", sprint_info['name'])
+            
+            with spacer1:
+                pass  # Spacer column
             
             with col2:
                 start_date = sprint_info['start_date']
