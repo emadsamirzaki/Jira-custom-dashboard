@@ -497,13 +497,14 @@ def get_component_capability_status_historical(jira, project_key, component_name
         
         # Date range for historical data
         date_n_days_ago = (datetime.now() - timedelta(days=days_ago)).strftime('%Y-%m-%d')
-        date_past_30 = (datetime.now() - timedelta(days=days_ago-30)).strftime('%Y-%m-%d')
+        # For "Added in last 30 days" as of N days ago, we need (N+30) days ago
+        date_past_30_days_ago = (datetime.now() - timedelta(days=days_ago+30)).strftime('%Y-%m-%d')
         
         # For historical comparison, get issues created before N days ago (which existed then)
         criteria = [
             ('Total', f'{component_filter} AND resolution = Unresolved AND created < "{date_n_days_ago}"'),
-            ('Added in last 30 days', f'{component_filter} AND created >= "{date_n_days_ago}" AND created < "{date_past_30}"'),
-            ('Resolved in last 30 days', f'{component_filter} AND resolved >= "{date_n_days_ago}" AND status != Cancelled AND resolved < "{date_past_30}"'),
+            ('Added in last 30 days', f'{component_filter} AND created >= "{date_past_30_days_ago}" AND created < "{date_n_days_ago}"'),
+            ('Resolved in last 30 days', f'{component_filter} AND resolved >= "{date_past_30_days_ago}" AND status != "Cancelled" AND resolved < "{date_n_days_ago}"'),
         ]
         
         # Count issues for each criteria and issue type
@@ -1035,6 +1036,10 @@ def main():
             
             # Get last week's data for comparison
             historical_data = get_component_capability_status_historical(jira, jira_config['project_key'], component_name, sprint_id, days_ago=7)
+            
+            # Debug: Check if historical data was retrieved
+            if not historical_data:
+                st.warning(f"⚠️ Could not retrieve historical data for trend comparison")
             
             # Helper function to generate comparison arrow
             def get_comparison_arrow(current, previous):
