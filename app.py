@@ -497,12 +497,13 @@ def get_component_capability_status_historical(jira, project_key, component_name
         
         # Date range for historical data
         date_n_days_ago = (datetime.now() - timedelta(days=days_ago)).strftime('%Y-%m-%d')
+        date_past_30 = (datetime.now() - timedelta(days=days_ago-30)).strftime('%Y-%m-%d')
         
         # For historical comparison, get issues created before N days ago (which existed then)
         criteria = [
-            ('Total', f'{component_filter} AND resolution = Unresolved AND created < {date_n_days_ago}'),
-            ('Added in last 30 days', f'{component_filter} AND created >= {date_n_days_ago} AND created < {(datetime.now() - timedelta(days=days_ago-30)).strftime("%Y-%m-%d")}'),
-            ('Resolved in last 30 days', f'{component_filter} AND resolved >= {date_n_days_ago} AND status != Cancelled AND resolved < {(datetime.now() - timedelta(days=days_ago-30)).strftime("%Y-%m-%d")}'),
+            ('Total', f'{component_filter} AND resolution = Unresolved AND created < "{date_n_days_ago}"'),
+            ('Added in last 30 days', f'{component_filter} AND created >= "{date_n_days_ago}" AND created < "{date_past_30}"'),
+            ('Resolved in last 30 days', f'{component_filter} AND resolved >= "{date_n_days_ago}" AND status != Cancelled AND resolved < "{date_past_30}"'),
         ]
         
         # Count issues for each criteria and issue type
@@ -1037,10 +1038,8 @@ def main():
             
             # Helper function to generate comparison arrow
             def get_comparison_arrow(current, previous):
-                if previous == 0:
-                    return ""
                 if current > previous:
-                    return " <span style='color: #d32f2f; font-size: 16px;'>↑</span>"  # Red up arrow
+                    return " <span style='color: #388e3c; font-size: 16px;'>↑</span>"  # Green up arrow
                 elif current < previous:
                     return " <span style='color: #388e3c; font-size: 16px;'>↓</span>"  # Green down arrow
                 return ""
@@ -1138,8 +1137,8 @@ def main():
             legend_html = """
             <div style="font-size: 12px; color: #666; margin-top: 10px; font-style: italic;">
                 <strong>Legend:</strong> 
-                <span style='color: #d32f2f;'>↑ Red arrow</span> = Increased (more issues compared to 7 days ago) | 
-                <span style='color: #388e3c;'>↓ Green arrow</span> = Decreased (fewer issues compared to 7 days ago)
+                <span style='color: #388e3c;'>↑ Green up arrow</span> = Increased (more issues compared to 7 days ago) | 
+                <span style='color: #388e3c;'>↓ Green down arrow</span> = Decreased (fewer issues compared to 7 days ago)
             </div>
             """
             st.markdown(legend_html, unsafe_allow_html=True)
