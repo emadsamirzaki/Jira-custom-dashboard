@@ -444,7 +444,7 @@ def get_component_capability_status(jira, project_key, component_name, sprint_id
             ('Sprint Low', f'{component_filter} AND resolution = Unresolved AND priority IN (Low, Lowest) AND sprint = {sprint_id}'),
             # Other metrics
             ('Total', f'{component_filter} AND resolution = Unresolved'),
-            ('Resolved in last 30 days', f'{component_filter} AND resolved >= {thirty_days_ago}'),
+            ('Resolved in last 30 days', f'{component_filter} AND resolved >= {thirty_days_ago} AND status != Cancelled'),
             ('Added in last 30 days', f'{component_filter} AND created >= {thirty_days_ago}'),
         ]
         
@@ -492,12 +492,12 @@ def get_resolved_issues_debug(jira, project_key, component_name, sprint_id=None)
         thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
         component_filter = f'AND component = {component.id}'
         
-        # Get Features (Story/Task)
-        jql_features = f'project = {project_key} {component_filter} AND resolved >= {thirty_days_ago} AND (type = Story OR type = Task)'
+        # Get Features (Story/Task) - exclude Cancelled status
+        jql_features = f'project = {project_key} {component_filter} AND resolved >= {thirty_days_ago} AND status != Cancelled AND (type = Story OR type = Task)'
         features = jira.search_issues(jql_features, maxResults=100, expand='changelog')
         
-        # Get Defects (Bugs)
-        jql_defects = f'project = {project_key} {component_filter} AND resolved >= {thirty_days_ago} AND type = Bug'
+        # Get Defects (Bugs) - exclude Cancelled status
+        jql_defects = f'project = {project_key} {component_filter} AND resolved >= {thirty_days_ago} AND status != Cancelled AND type = Bug'
         defects = jira.search_issues(jql_defects, maxResults=100, expand='changelog')
         
         return {
