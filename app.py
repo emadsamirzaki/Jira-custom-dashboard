@@ -982,7 +982,7 @@ def main():
                     <td>{sprint_high_d}</td>
                     <td>{sprint_med_d}</td>
                     <td>{sprint_low_d}</td>
-                    <td class="total-column">{total_d}</td>
+                    <td class="total-column">{total_d_with_arrow}</td>
                     <td>{added_d}</td>
                     <td>{resolved_d}</td>
                 </tr>
@@ -997,7 +997,7 @@ def main():
                     <td>{sprint_high_f}</td>
                     <td>{sprint_med_f}</td>
                     <td>{sprint_low_f}</td>
-                    <td class="total-column">{total_f}</td>
+                    <td class="total-column">{total_f_with_arrow}</td>
                     <td>{added_f}</td>
                     <td>{resolved_f}</td>
                 </tr>
@@ -1051,18 +1051,29 @@ def main():
                 hist_total_added = historical_data['Defects'].get('Added in last 30 days', 0) + historical_data['Features'].get('Added in last 30 days', 0)
                 hist_total_resolved = historical_data['Defects'].get('Resolved in last 30 days', 0) + historical_data['Features'].get('Resolved in last 30 days', 0)
                 
+                # Also get defects and features totals individually
+                hist_defects_total = historical_data['Defects'].get('Total', 0)
+                hist_features_total = historical_data['Features'].get('Total', 0)
+                
                 grand_total_arrow = get_comparison_arrow(grand_total, hist_grand_total)
                 total_added_arrow = get_comparison_arrow(total_added, hist_total_added)
                 total_resolved_arrow = get_comparison_arrow(total_resolved, hist_total_resolved)
+                
+                defects_total_arrow = get_comparison_arrow(defect_data.get('Total', 0), hist_defects_total)
+                features_total_arrow = get_comparison_arrow(feature_data.get('Total', 0), hist_features_total)
             else:
                 grand_total_arrow = ""
                 total_added_arrow = ""
                 total_resolved_arrow = ""
+                defects_total_arrow = ""
+                features_total_arrow = ""
             
             # Format values with arrows
             grand_total_display = f"{grand_total}{grand_total_arrow}"
             total_added_display = f"{total_added}{total_added_arrow}"
             total_resolved_display = f"{total_resolved}{total_resolved_arrow}"
+            total_d_display = f"{defect_data.get('Total', 0)}{defects_total_arrow}"
+            total_f_display = f"{feature_data.get('Total', 0)}{features_total_arrow}"
             
             # Fill in the values
             html_table = html_table.format(
@@ -1075,7 +1086,7 @@ def main():
                 sprint_high_d=defect_data.get('Sprint High', 0),
                 sprint_med_d=defect_data.get('Sprint Medium', 0),
                 sprint_low_d=defect_data.get('Sprint Low', 0),
-                total_d=defect_data.get('Total', 0),
+                total_d_with_arrow=total_d_display,
                 added_d=defect_data.get('Added in last 30 days', 0),
                 resolved_d=defect_data.get('Resolved in last 30 days', 0),
                 # Features
@@ -1087,7 +1098,7 @@ def main():
                 sprint_high_f=feature_data.get('Sprint High', 0),
                 sprint_med_f=feature_data.get('Sprint Medium', 0),
                 sprint_low_f=feature_data.get('Sprint Low', 0),
-                total_f=feature_data.get('Total', 0),
+                total_f_with_arrow=total_f_display,
                 added_f=feature_data.get('Added in last 30 days', 0),
                 resolved_f=feature_data.get('Resolved in last 30 days', 0),
                 # Totals
@@ -1106,6 +1117,16 @@ def main():
             
             # Display the HTML table
             st.markdown(html_table, unsafe_allow_html=True)
+            
+            # Add legend explaining arrows
+            legend_html = """
+            <div style="font-size: 12px; color: #666; margin-top: 10px; font-style: italic;">
+                <strong>Legend:</strong> 
+                <span style='color: #d32f2f;'>↑ Red arrow</span> = Increased (more issues compared to 7 days ago) | 
+                <span style='color: #388e3c;'>↓ Green arrow</span> = Decreased (fewer issues compared to 7 days ago)
+            </div>
+            """
+            st.markdown(legend_html, unsafe_allow_html=True)
             
             st.divider()
             
