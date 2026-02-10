@@ -917,7 +917,7 @@ def main():
                     <td>{resolved_f}</td>
                 </tr>
                 <!-- Total row -->
-                <tr style="background-color: #3d5a80; color: white; font-weight: bold; font-size: 14px; text-align: center;">
+                <tr style="background-color: #9fb6d4; color: white; font-weight: bold; font-size: 14px; text-align: center;">
                     <td style="text-align: center; font-weight: bold;">📊 Total</td>
                     <td>{total_backlog_crit}</td>
                     <td>{total_backlog_high}</td>
@@ -995,7 +995,7 @@ def main():
             # Display summary information
             st.subheader("📈 Summary")
             
-            col1, col2, col3, col4 = st.columns(4)
+            col1, col2, col3, col4, col5, col6 = st.columns(6)
             
             with col1:
                 total_defects = capability_data['Defects'].get('Total', 0)
@@ -1006,14 +1006,24 @@ def main():
                 st.metric("Total Features", total_features)
             
             with col3:
-                critical_issues = (capability_data['Defects'].get('Sprint Critical', 0) + 
-                                 capability_data['Features'].get('Sprint Critical', 0))
-                st.metric("Sprint Critical Issues", critical_issues)
+                backlog_critical_issues = (capability_data['Defects'].get('Backlog Critical', 0) + 
+                                          capability_data['Features'].get('Backlog Critical', 0))
+                st.metric("Backlog Critical", backlog_critical_issues)
             
             with col4:
+                backlog_high_issues = (capability_data['Defects'].get('Backlog High', 0) + 
+                                      capability_data['Features'].get('Backlog High', 0))
+                st.metric("Backlog High", backlog_high_issues)
+            
+            with col5:
+                critical_issues = (capability_data['Defects'].get('Sprint Critical', 0) + 
+                                 capability_data['Features'].get('Sprint Critical', 0))
+                st.metric("Sprint Critical", critical_issues)
+            
+            with col6:
                 high_issues = (capability_data['Defects'].get('Sprint High', 0) + 
                              capability_data['Features'].get('Sprint High', 0))
-                st.metric("Sprint High Issues", high_issues)
+                st.metric("Sprint High", high_issues)
         
             st.divider()
             
