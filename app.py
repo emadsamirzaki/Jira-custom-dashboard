@@ -237,7 +237,8 @@ def get_release_versions(jira, project_key):
     """
     Retrieve released and upcoming versions (fix versions) from the project.
     Returns two lists: released_versions and upcoming_versions
-    Each version contains: name, description, release_date, status
+    Each version contains: name, description, release_date, status, version_id
+    For upcoming versions, only includes unreleased and non-archived versions with release dates.
     """
     try:
         project = jira.project(project_key)
@@ -247,27 +248,38 @@ def get_release_versions(jira, project_key):
         upcoming_versions = []
         
         for version in versions:
+            release_date = version.releaseDate if hasattr(version, 'releaseDate') and version.releaseDate else 'Not set'
+            version_id = version.id if hasattr(version, 'id') else None
+            
             version_info = {
                 'name': version.name,
                 'description': version.description if hasattr(version, 'description') and version.description else 'No description',
-                'release_date': version.releaseDate if hasattr(version, 'releaseDate') and version.releaseDate else 'Not set',
-                'status': 'Released' if version.released else 'Unreleased'
+                'release_date': release_date,
+                'status': 'Released' if version.released else 'Unreleased',
+                'archived': version.archived if hasattr(version, 'archived') else False,
+                'version_id': version_id
             }
             
             if version.released:
-                released_versions.append(version_info)
+                # Only include if has release date
+                if release_date != 'Not set':
+                    released_versions.append(version_info)
             else:
-                upcoming_versions.append(version_info)
+                # For upcoming: only include unreleased, non-archived versions with release dates
+                is_archived = version.archived if hasattr(version, 'archived') else False
+                if not is_archived and release_date != 'Not set':
+                    upcoming_versions.append(version_info)
         
         # Sort released versions by date (newest first)
         released_versions.sort(
-            key=lambda x: x['release_date'] if x['release_date'] != 'Not set' else '1970-01-01',
+            key=lambda x: x['release_date'],
             reverse=True
         )
         
-        # Sort upcoming versions by date (soonest first)
+        # Sort upcoming versions by date (soonest first - ascending)
         upcoming_versions.sort(
-            key=lambda x: x['release_date'] if x['release_date'] != 'Not set' else '9999-12-31',
+            key=lambda x: x['release_date'],
+            reverse=False
         )
         
         return released_versions[:5], upcoming_versions[:5]  # Return top 5 each
@@ -835,11 +847,13 @@ def main():
             st.write("**📦 Last 5 Released Versions:**")
             if released_versions:
                 for version in released_versions:
-                    with st.container(border=True):
-                        st.write(f"**{version['name']}**")
+                    with st.container(border=True, height=250):
+                        # Make title clickable
+                        version_url = f"{jira_config['url']}/projects/{jira_config['project_key']}/versions/{version['version_id']}/tab/release-report-all-issues"
+                        st.markdown(f"[**{version['name']}**]({version_url})", unsafe_allow_html=True)
                         if version['release_date'] != 'Not set':
-                            st.caption(f"📅 Released: {version['release_date']}")
-                        st.text(version['description'][:200] + ("..." if len(version['description']) > 200 else ""))
+                            st.markdown(f"<p style='color: #388e3c; font-size: 16px; font-weight: bold; margin: 5px 0;'>📅 {version['release_date']}</p>", unsafe_allow_html=True)
+                        st.text(version['description'][:150] + ("..." if len(version['description']) > 150 else ""))
             else:
                 st.info("No released versions found.")
         
@@ -847,11 +861,13 @@ def main():
             st.write("**🎯 Next 5 Upcoming Versions:**")
             if upcoming_versions:
                 for version in upcoming_versions:
-                    with st.container(border=True):
-                        st.write(f"**{version['name']}**")
+                    with st.container(border=True, height=250):
+                        # Make title clickable
+                        version_url = f"{jira_config['url']}/projects/{jira_config['project_key']}/versions/{version['version_id']}/tab/release-report-all-issues"
+                        st.markdown(f"[**{version['name']}**]({version_url})", unsafe_allow_html=True)
                         if version['release_date'] != 'Not set':
-                            st.caption(f"📅 Planned: {version['release_date']}")
-                        st.text(version['description'][:200] + ("..." if len(version['description']) > 200 else ""))
+                            st.markdown(f"<p style='color: #d32f2f; font-size: 16px; font-weight: bold; margin: 5px 0;'>📅 {version['release_date']}</p>", unsafe_allow_html=True)
+                        st.text(version['description'][:150] + ("..." if len(version['description']) > 150 else ""))
             else:
                 st.info("No upcoming versions found.")
     
