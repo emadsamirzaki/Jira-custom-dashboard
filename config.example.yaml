@@ -1,0 +1,36 @@
+# Jira Dashboard Configuration Example
+# Copy this file to config.yaml and fill in your Jira details
+# OR set environment variables as shown in .env.example
+
+jira:
+  # Your Jira Cloud URL (without trailing slash)
+  # Example: https://your-domain.atlassian.net
+  # Alternatively, set env var: JIRA_URL
+  url: "https://your-domain.atlassian.net"
+  
+  # Your Jira account email address
+  # Alternatively, set env var: JIRA_EMAIL
+  email: "your-email@example.com"
+  
+  # API Token (NOT your password)
+  # Generate at: https://id.atlassian.com/manage-profile/security/api-tokens
+  # Alternatively, set env var: JIRA_TOKEN (RECOMMENDED for production)
+  api_token: "your-api-token-here"
+  
+  # Your project key (uppercase, no spaces)
+  # Example: MYPROJECT, JIRA, PROJ
+  # Alternatively, set env var: JIRA_PROJECT_KEY
+  project_key: "MYPROJECT"
+  
+  # Board ID for Sprint information
+  # Find this in the board URL: /board/1234 (1234 is the board ID)
+  # Alternatively, set env var: JIRA_BOARD_ID
+  board_id: 1
+
+# Component ordering for menus
+# Used in Sprint Status and Component Capability Status sections
+components:
+  preferred_order:
+    - Component Name 1
+    - Component Name 2
+    - Component Name 3

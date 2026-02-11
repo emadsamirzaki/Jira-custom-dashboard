@@ -9,6 +9,35 @@ from jira import JIRA
 from datetime import datetime, timedelta
 import os
 import pandas as pd
+from dotenv import load_dotenv
+
+# Load environment variables from .env file (if it exists)
+load_dotenv()
+
+
+# ============================================================================
+# LOGGING UTILITY
+# ============================================================================
+import logging
+
+# Configure logging based on environment
+log_level = os.getenv('LOG_LEVEL', 'WARNING')
+logging.basicConfig(
+    level=getattr(logging, log_level, logging.WARNING),
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# CONSTANTS & SETTINGS
+# ============================================================================
+CACHE_TTL = int(os.getenv('CACHE_TTL', 300))  # Default 5 minutes, configurable
+REQUEST_TIMEOUT = int(os.getenv('REQUEST_TIMEOUT', 30))  # API request timeout in seconds
+MAX_RETRIES = 3  # Number of retries for failed requests
+
+
+
 
 
 # ============================================================================
@@ -25,20 +54,68 @@ st.set_page_config(
 # CONFIGURATION LOADING
 # ============================================================================
 def load_config():
-    """Load Jira configuration from config.yaml file."""
+    """
+    Load Jira configuration from environment variables or config.yaml.
+    Priority: Environment variables > config.yaml
+    
+    Environment variables:
+    - JIRA_URL: Jira Cloud URL
+    - JIRA_EMAIL: Jira account email
+    - JIRA_TOKEN: Jira API token
+    - JIRA_PROJECT_KEY: Project key
+    - JIRA_BOARD_ID: Board ID
+    """
+    config = {
+        'jira': {},
+        'components': {'preferred_order': []}
+    }
+    
+    # Try to load from environment variables first (recommended for production)
+    jira_url = os.getenv('JIRA_URL', '').strip()
+    jira_email = os.getenv('JIRA_EMAIL', '').strip()
+    jira_token = os.getenv('JIRA_TOKEN', '').strip()
+    jira_project_key = os.getenv('JIRA_PROJECT_KEY', '').strip()
+    jira_board_id = os.getenv('JIRA_BOARD_ID', '').strip()
+    
+    # If all env vars are set, use them
+    if jira_url and jira_email and jira_token and jira_project_key and jira_board_id:
+        try:
+            config['jira'] = {
+                'url': jira_url.rstrip('/'),
+                'email': jira_email,
+                'api_token': jira_token,
+                'project_key': jira_project_key,
+                'board_id': int(jira_board_id)
+            }
+            return config
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Invalid environment variables: {str(e)}")
+            # Fall through to config.yaml
+    
+    # Fallback to config.yaml file
     config_path = "config.yaml"
     
     if not os.path.exists(config_path):
-        st.error(f"Configuration file not found: {config_path}")
+        st.error(
+            "❌ Configuration not found!\n\n"
+            "Please either:\n"
+            "1. Create a `.env` file with your Jira credentials (recommended for production)\n"
+            "2. Create a `config.yaml` file with your Jira details\n\n"
+            "See `.env.example` or `config.example.yaml` for templates."
+        )
         st.stop()
     
     try:
         with open(config_path, 'r') as f:
             config = yaml.safe_load(f)
+            # Normalize URL (remove trailing slash)
+            if config.get('jira', {}).get('url'):
+                config['jira']['url'] = config['jira']['url'].rstrip('/')
         return config
     except Exception as e:
-        st.error(f"Error loading configuration: {str(e)}")
+        st.error(f"❌ Error loading configuration: {str(e)}")
         st.stop()
+
 
 
 # ============================================================================
@@ -49,14 +126,29 @@ def get_jira_connection(url, email, api_token):
     """
     Establish and cache connection to Jira Cloud.
     Using st.cache_resource to maintain single connection throughout session.
+    
+    Args:
+        url: Jira Cloud URL
+        email: Jira account email
+        api_token: Jira API token
+        
+    Returns:
+        JIRA connection object or None if connection fails
     """
+    
     try:
+        # Initialize Jira connection with timeout for better performance
         jira = JIRA(
             server=url,
-            basic_auth=(email, api_token)
+            basic_auth=(email, api_token),
+            options={'timeout': REQUEST_TIMEOUT}
         )
+        
+        logger.info("Successfully connected to Jira")
         return jira
+        
     except Exception as e:
+        logger.error(f"Failed to connect to Jira: {str(e)}")
         return None
 
 
@@ -543,10 +635,10 @@ def get_component_capability_status_historical(jira, project_key, component_name
                 break
         
         if not component:
-            print(f"DEBUG: Component '{component_name}' not found in project {project_key}")
+            logger.debug(f"Component '{component_name}' not found in project {project_key}")
             return None
         
-        print(f"DEBUG: Found component '{component_name}' with ID {component.id}")
+        logger.debug(f"Found component '{component_name}' with ID {component.id}")
         
         # Initialize counters
         data = {
@@ -562,7 +654,7 @@ def get_component_capability_status_historical(jira, project_key, component_name
         # For "Added in last 30 days" as of N days ago, we need (N+30) days ago
         date_past_30_days_ago = (datetime.now() - timedelta(days=days_ago+30)).strftime('%Y-%m-%d')
         
-        print(f"DEBUG: Date range - {days_ago} days ago: {date_n_days_ago}, 30+{days_ago} days ago: {date_past_30_days_ago}")
+        logger.debug(f"Date range - {days_ago} days ago: {date_n_days_ago}, 30+{days_ago} days ago: {date_past_30_days_ago}")
         
         # For historical comparison, get issues created before N days ago (which existed then)
         criteria = [
@@ -577,15 +669,15 @@ def get_component_capability_status_historical(jira, project_key, component_name
             jql_defect = f'project = {project_key} {base_jql} AND type = Bug'
             defect_count = jira.search_issues(jql_defect, maxResults=0).total
             data['Defects'][column_name] = defect_count
-            print(f"DEBUG: {column_name} - Defects: {defect_count}")
+            logger.debug(f"{column_name} - Defects: {defect_count}")
             
             # Count Features (Story or Task only)
             jql_feature = f'project = {project_key} {base_jql} AND (type = Story OR type = Task)'
             feature_count = jira.search_issues(jql_feature, maxResults=0).total
             data['Features'][column_name] = feature_count
-            print(f"DEBUG: {column_name} - Features: {feature_count}")
+            logger.debug(f"{column_name} - Features: {feature_count}")
         
-        print(f"DEBUG: Historical data = {data}")
+        logger.debug(f"Historical data = {data}")
         return data
     
     except Exception as e:
@@ -640,7 +732,7 @@ def get_critical_high_issues(jira, project_key, component_name, sprint_id=None, 
         return None
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=CACHE_TTL)
 def get_flagged_issues(_jira, project_key, component_name):
     """
     Get all issues marked as Flagged in the component.
@@ -951,40 +1043,41 @@ def main():
         # Display Components and Issues Count (Current Sprint)
         st.subheader("📦 Issues by Component (Current Sprint)")
         
-        with st.spinner("Fetching component issues..."):
-            components_data = get_components_issues_count(jira, jira_config['project_key'], sprint_info['id'])
-        
-        if components_data:
-            import pandas as pd
-            # Convert to DataFrame for better table display
-            df = pd.DataFrame(components_data)
+        if sprint_info:
+            with st.spinner("Fetching component issues..."):
+                components_data = get_components_issues_count(jira, jira_config['project_key'], sprint_info['id'])
             
-            # Display as a formatted table
-            st.dataframe(
-                df,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "Component": st.column_config.TextColumn("Component", width="medium"),
-                    "# Story/Task": st.column_config.NumberColumn("# Story/Task", format="%d"),
-                    "# Bugs": st.column_config.NumberColumn("# Bugs", format="%d"),
-                    "Total": st.column_config.NumberColumn("Total", format="%d")
-                }
-            )
+            if components_data:
+                import pandas as pd
+                # Convert to DataFrame for better table display
+                df = pd.DataFrame(components_data)
+                
+                # Display as a formatted table
+                st.dataframe(
+                    df,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "Component": st.column_config.TextColumn("Component", width="medium"),
+                        "# Story/Task": st.column_config.NumberColumn("# Story/Task", format="%d"),
+                        "# Bugs": st.column_config.NumberColumn("# Bugs", format="%d"),
+                        "Total": st.column_config.NumberColumn("Total", format="%d")
+                    }
+                )
+                
+                # Show summary statistics
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Components with Issues", len(components_data))
+                with col2:
+                    total_story_task = sum(item['# Story/Task'] for item in components_data)
+                    st.metric("Total Story/Task", total_story_task)
+                with col3:
+                    total_bugs = sum(item['# Bugs'] for item in components_data)
+                    st.metric("Total Bugs", total_bugs)
             
-            # Show summary statistics
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Components with Issues", len(components_data))
-            with col2:
-                total_story_task = sum(item['# Story/Task'] for item in components_data)
-                st.metric("Total Story/Task", total_story_task)
-            with col3:
-                total_bugs = sum(item['# Bugs'] for item in components_data)
-                st.metric("Total Bugs", total_bugs)
-        
-        else:
-            st.info("No component issues found in the current sprint.")
+            else:
+                st.info("No component issues found in the current sprint.")
         
         st.divider()
         
@@ -1322,12 +1415,12 @@ def main():
                 defects_resolved_arrow = get_comparison_arrow(defect_data.get('Resolved in last 30 days', 0), hist_defects_resolved)
                 features_resolved_arrow = get_comparison_arrow(feature_data.get('Resolved in last 30 days', 0), hist_features_resolved)
                 
-                print(f"DEBUG: Defects Total - Current: {defect_data.get('Total', 0)}, Historical: {hist_defects_total}, Arrow: {defects_total_arrow}")
-                print(f"DEBUG: Defects Added - Current: {defect_data.get('Added in last 30 days', 0)}, Historical: {hist_defects_added}, Arrow: {defects_added_arrow}")
-                print(f"DEBUG: Defects Resolved - Current: {defect_data.get('Resolved in last 30 days', 0)}, Historical: {hist_defects_resolved}, Arrow: {defects_resolved_arrow}")
-                print(f"DEBUG: Features Total - Current: {feature_data.get('Total', 0)}, Historical: {hist_features_total}, Arrow: {features_total_arrow}")
-                print(f"DEBUG: Features Added - Current: {feature_data.get('Added in last 30 days', 0)}, Historical: {hist_features_added}, Arrow: {features_added_arrow}")
-                print(f"DEBUG: Features Resolved - Current: {feature_data.get('Resolved in last 30 days', 0)}, Historical: {hist_features_resolved}, Arrow: {features_resolved_arrow}")
+                logger.debug(f"Defects Total - Current: {defect_data.get('Total', 0)}, Historical: {hist_defects_total}, Arrow: {defects_total_arrow}")
+                logger.debug(f"Defects Added - Current: {defect_data.get('Added in last 30 days', 0)}, Historical: {hist_defects_added}, Arrow: {defects_added_arrow}")
+                logger.debug(f"Defects Resolved - Current: {defect_data.get('Resolved in last 30 days', 0)}, Historical: {hist_defects_resolved}, Arrow: {defects_resolved_arrow}")
+                logger.debug(f"Features Total - Current: {feature_data.get('Total', 0)}, Historical: {hist_features_total}, Arrow: {features_total_arrow}")
+                logger.debug(f"Features Added - Current: {feature_data.get('Added in last 30 days', 0)}, Historical: {hist_features_added}, Arrow: {features_added_arrow}")
+                logger.debug(f"Features Resolved - Current: {feature_data.get('Resolved in last 30 days', 0)}, Historical: {hist_features_resolved}, Arrow: {features_resolved_arrow}")
             else:
                 grand_total_arrow = ""
                 total_added_arrow = ""

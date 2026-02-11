@@ -48,7 +48,9 @@ pip install -r requirements.txt
    ```
 4. The number after `/boards/` is your **Board ID** (in this example: `1234`)
 
-### Step 4: Configure config.yaml
+### Step 4: Configure with config.yaml OR Environment Variables
+
+**Option A: config.yaml (Development)**
 
 Open `config.yaml` and fill in your Jira details:
 
@@ -60,6 +62,23 @@ jira:
   project_key: "MYPROJECT"                         # Your project key (uppercase)
   board_id: 1234                                   # Board ID from Step 3
 ```
+
+**Option B: Environment Variables (Recommended for Production)**
+
+Create a `.env` file (or set environment variables):
+
+```env
+JIRA_URL=https://your-domain.atlassian.net
+JIRA_EMAIL=your-email@example.com
+JIRA_TOKEN=your-api-token-here
+JIRA_PROJECT_KEY=MYPROJECT
+JIRA_BOARD_ID=1234
+LOG_LEVEL=WARNING
+CACHE_TTL=300
+```
+
+Environment variables take priority over `config.yaml`
+
 
 ### Step 5: Run the Application
 
@@ -120,15 +139,63 @@ __pycache__/
 - API token may have expired - regenerate at https://id.atlassian.com/manage-profile/security/api-tokens
 - Verify email address hasn't changed
 
+## � Deployment
+
+This app is production-ready and can be deployed to various platforms:
+
+### Quick Deployment (Recommended)
+
+**Docker Deployment** (Requires Docker):
+```bash
+cp .env.example .env
+# Edit .env with your credentials
+docker-compose up -d
+# Access at http://localhost:8501
+```
+
+**Streamlit Cloud** (Zero DevOps):
+1. Push code to GitHub (`.env` and `config.yaml` in `.gitignore`)
+2. Go to https://streamlit.io/cloud
+3. Connect your repo and add environment variables
+4. App deploys automatically!
+
+**Manual VPS/Server**:
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions including:
+- Manual Python installation
+- Systemd service setup
+- Nginx reverse proxy configuration
+- Security hardening
+
+### Deployment Features
+✅ Environment variable support (.env files)
+✅ Docker & Docker Compose ready
+✅ Production-grade error handling
+✅ Connection retry logic
+✅ Request timeouts
+✅ Configurable logging
+✅ Non-root container execution
+✅ Health checks included
+
+For detailed deployment instructions, see **[DEPLOYMENT.md](DEPLOYMENT.md)**
+
 ## 📦 Project Structure
 
 ```
 project/
-├── config.yaml          # Jira credentials and configuration (not in git)
-├── app.py               # Main Streamlit application
-├── requirements.txt     # Python dependencies
-└── README.md           # This file
+├── app.py                     # Main Streamlit application
+├── config.example.yaml        # Configuration template
+├── .env.example              # Environment variables template
+├── requirements.txt          # Python dependencies
+├── Dockerfile                # Docker containerization
+├── docker-compose.yml        # Docker Compose orchestration
+├── .streamlit/config.toml    # Streamlit production config
+├── README.md                 # This file
+├── DEPLOYMENT.md             # Deployment guide
+└── .gitignore               # Prevents committing secrets
 ```
+
+**Note**: `config.yaml` and `.env` are in `.gitignore` for security
+
 
 ## 🔄 Future Enhancements
 

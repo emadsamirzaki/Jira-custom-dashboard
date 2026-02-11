@@ -1,0 +1,59 @@
+version: '3.9'
+
+services:
+  jira-dashboard:
+    build: .
+    container_name: jira-dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      # Jira Configuration (required)
+      - JIRA_URL=${JIRA_URL}
+      - JIRA_EMAIL=${JIRA_EMAIL}
+      - JIRA_TOKEN=${JIRA_TOKEN}
+      - JIRA_PROJECT_KEY=${JIRA_PROJECT_KEY}
+      - JIRA_BOARD_ID=${JIRA_BOARD_ID}
+      
+      # Streamlit Settings
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_HEADLESS=true
+      - LOG_LEVEL=WARNING
+      
+      # Performance
+      - PYTHONUNBUFFERED=1
+    
+    # Restart policy for production
+    restart: unless-stopped
+    
+    # Resource limits (optional, customize based on your needs)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '1'
+    #       memory: 1G
+    #     reservations:
+    #       cpus: '0.5'
+    #       memory: 512M
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    
+    # Read-only filesystem for security (if not writing files)
+    # read_only: true
