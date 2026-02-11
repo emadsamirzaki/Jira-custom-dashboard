@@ -44,7 +44,7 @@ MAX_RETRIES = 3  # Number of retries for failed requests
 # PAGE CONFIGURATION
 # ============================================================================
 st.set_page_config(
-    page_title="Jira Dashboard",
+    page_title="Jira Dashboard | Wolters Kluwer",
     page_icon="📊",
     layout="wide"
 )
@@ -382,9 +382,187 @@ def get_release_versions(jira, project_key):
 
 
 # ============================================================================
+# BRANDING FUNCTIONS
+# ============================================================================
+def display_branded_header(page_title=""):
+    """
+    Display the branded header with page title and team name.
+    """
+    try:
+        header_html = f"""
+        <style>
+        .wk-header {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #3c70a3 0%, #004d99 100%);
+            border-bottom: 3px solid #FF6600;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }}
+        .wk-page-title {{
+            font-size: 28px;
+            color: white;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            letter-spacing: 0.3px;
+        }}
+        .wk-page-team {{
+            font-size: 13px;
+            color: #FFB84D;
+            font-style: italic;
+            margin: 0;
+            font-weight: 500;
+        }}
+        </style>
+        
+        <div class="wk-header">
+            <div class="wk-page-title">{page_title}</div>
+            <div class="wk-page-team">InfraOps Engineering Team</div>
+        </div>
+        """
+        
+        st.markdown(header_html, unsafe_allow_html=True)
+    except Exception as e:
+        logger.error(f"Error displaying branded header: {str(e)}")
+        st.write("📊 Jira Dashboard")
+
+
+def display_branded_footer():
+    """
+    Display the branded footer with team name and copyright information.
+    """
+    try:
+        footer_css = """
+        <style>
+        .wk-footer {
+            margin-top: 40px;
+            padding: 20px;
+            background: linear-gradient(135deg, #3c70a3 0%, #004d99 100%);
+            border-top: 3px solid #FF6600;
+            border-radius: 5px;
+            text-align: center;
+            box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+        }
+        .wk-footer-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .wk-footer-text {
+            color: white;
+            font-size: 12px;
+            margin: 0;
+        }
+        .wk-footer-divider {
+            color: #FF6600;
+            font-size: 12px;
+        }
+        .wk-footer-team {
+            color: #FF6600;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        </style>
+        
+        <div class="wk-footer">
+            <div class="wk-footer-content">
+                <span class="wk-footer-text">© Wolters Kluwer</span>
+                <span class="wk-footer-divider">|</span>
+                <span class="wk-footer-team">InfraOps Engineering Team</span>
+                <span class="wk-footer-divider">|</span>
+                <span class="wk-footer-text">Jira Cloud Dashboard</span>
+            </div>
+        </div>
+        """
+        
+        st.markdown(footer_css, unsafe_allow_html=True)
+    except Exception as e:
+        logger.error(f"Error displaying branded footer: {str(e)}")
+
+
+# ============================================================================
+# SIDEBAR BRANDING
+# ============================================================================
+def display_sidebar_branding():
+    """
+    Display Wolters Kluwer branding in the sidebar with logo and company name.
+    """
+    try:
+        import base64
+        import os
+        
+        # Load logo from assets folder
+        logo_path = os.path.join(os.path.dirname(__file__), "assets", "wk-logo.png")
+        
+        if os.path.exists(logo_path):
+            with open(logo_path, "rb") as logo_file:
+                logo_data = base64.b64encode(logo_file.read()).decode()
+            
+            sidebar_html = f"""
+            <style>
+            .wk-sidebar-brand {{
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+                padding: 20px 15px;
+                background: linear-gradient(135deg, #3c70a3 0%, #004d99 100%);
+                border-radius: 8px;
+                margin-bottom: 20px;
+                text-align: center;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            }}
+            .wk-sidebar-logo {{
+                height: 60px;
+                object-fit: contain;
+            }}
+            .wk-sidebar-company {{
+                font-size: 16px;
+                font-weight: bold;
+                color: white;
+                letter-spacing: 0.5px;
+                margin: 0;
+            }}
+            .wk-sidebar-team {{
+                font-size: 11px;
+                color: #e0e0e0;
+                font-style: italic;
+                margin: 0;
+            }}
+            </style>
+            
+            <div class="wk-sidebar-brand">
+                <img src="data:image/png;base64,{logo_data}" alt="Wolters Kluwer" class="wk-sidebar-logo"/>
+                <p class="wk-sidebar-company">WOLTERS KLUWER</p>
+                <p class="wk-sidebar-team">InfraOps Engineering Team</p>
+            </div>
+            """
+            st.markdown(sidebar_html, unsafe_allow_html=True)
+        else:
+            # Fallback if logo not found
+            st.write("**WOLTERS KLUWER**")
+            st.write("InfraOps Engineering Team")
+    except Exception as e:
+        logger.error(f"Error displaying sidebar branding: {str(e)}")
+        st.write("**WOLTERS KLUWER**")
+
+
+# ============================================================================
 # SIDEBAR NAVIGATION
 # ============================================================================
 with st.sidebar:
+    # Display company branding at the top of sidebar
+    display_sidebar_branding()
+    
+    st.divider()
+    
     st.header("📊 Navigation")
     
     # Navigation menu with session state management
@@ -886,6 +1064,37 @@ def display_refresh_button():
     return False
 
 
+def is_date_past(date_string):
+    """
+    Check if a date string is in the past.
+    
+    Args:
+        date_string: Date string in format 'YYYY-MM-DD' or 'YYYY-MM-DDTHH:MM:SS.000+0000'
+    
+    Returns:
+        Boolean indicating if date is in the past
+    """
+    try:
+        if date_string == 'Not set':
+            return False
+        
+        # Parse the date string
+        if 'T' in date_string:
+            # ISO format with time
+            release_date = datetime.fromisoformat(date_string.replace('Z', '+00:00')).date()
+        else:
+            # Simple date format
+            release_date = datetime.strptime(date_string, '%Y-%m-%d').date()
+        
+        today = datetime.now().date()
+        return release_date < today
+    
+    except Exception as e:
+        logger.debug(f"Error checking if date is past: {str(e)}")
+        return False
+
+
+
 # ============================================================================
 # PAGE HANDLERS
 # ============================================================================
@@ -911,10 +1120,39 @@ def main():
         st.stop()
     
     # ========================================================================
+    # DISPLAY BRANDED HEADER
+    # ========================================================================
+    # Defensive session state initialization (sidebar also does this, but just in case)
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = 'Home'
+    if 'selected_component' not in st.session_state:
+        st.session_state.selected_component = None
+    
+    # Determine page title based on current page
+    try:
+        base_page_name = st.session_state.current_page.split(' - ')[0]
+        selected_component = getattr(st.session_state, 'selected_component', None) or "Select Component"
+        
+        page_title_map = {
+            'Home': '📊 Jira Dashboard',
+            'Sprint Status': f'🏃 Sprint Status - {selected_component}',
+            'Component Capability Status': f'📈 Component Capability Status - {selected_component}',
+            'Sprint Metrics': '📉 Sprint Metrics',
+            'Custom Reports': '📋 Custom Reports'
+        }
+        
+        page_title = page_title_map.get(base_page_name, '📊 Jira Dashboard')
+    except Exception as e:
+        logger.warning(f"Error determining page title: {str(e)}")
+        page_title = '📊 Jira Dashboard'
+    
+    # Display branded header
+    display_branded_header(page_title)
+    
+    # ========================================================================
     # HOME PAGE
     # ========================================================================
     if st.session_state.current_page == 'Home':
-        st.title("🏠 Home - Jira Dashboard")
         
         # Display refresh button with last updated time
         display_refresh_button()
@@ -1068,7 +1306,9 @@ def main():
                 # Show summary statistics
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("Components with Issues", len(components_data))
+                    # Count only valid components (exclude "No Component")
+                    valid_components_count = len([item for item in components_data if item['Component'] != 'No Component'])
+                    st.metric("Components with Issues", valid_components_count)
                 with col2:
                     total_story_task = sum(item['# Story/Task'] for item in components_data)
                     st.metric("Total Story/Task", total_story_task)
@@ -1113,18 +1353,24 @@ def main():
                         version_url = f"{jira_config['url']}/projects/{jira_config['project_key']}/versions/{version['version_id']}/tab/release-report-all-issues"
                         st.markdown(f"[**{version['name']}**]({version_url})", unsafe_allow_html=True)
                         if version['release_date'] != 'Not set':
-                            st.markdown(f"<p style='color: #d32f2f; font-size: 16px; font-weight: bold; margin: 5px 0;'>📅 {version['release_date']}</p>", unsafe_allow_html=True)
+                            # Check if release date is in the past
+                            is_overdue = is_date_past(version['release_date'])
+                            
+                            if is_overdue:
+                                # Show warning for overdue releases
+                                st.markdown(f"<p style='color: #d32f2f; font-size: 16px; font-weight: bold; margin: 5px 0;'>⚠️ OVERDUE - 📅 {version['release_date']}</p>", unsafe_allow_html=True)
+                            else:
+                                st.markdown(f"<p style='color: #4caf50; font-size: 16px; font-weight: bold; margin: 5px 0;'>📅 {version['release_date']}</p>", unsafe_allow_html=True)
                         st.text(version['description'][:150] + ("..." if len(version['description']) > 150 else ""))
             else:
                 st.info("No upcoming versions found.")
+
     
     # ========================================================================
     # SPRINT STATUS - COMPONENT STATUS PAGE
     # ========================================================================
     elif st.session_state.current_page.startswith('Sprint Status - '):
         component_name = st.session_state.selected_component
-        
-        st.title(f"📅 {component_name} - Sprint Status")
         
         # Display refresh button with last updated time
         display_refresh_button()
@@ -1207,8 +1453,6 @@ def main():
     # ========================================================================
     elif st.session_state.current_page.startswith('Component Capability Status - '):
         component_name = st.session_state.selected_component
-        
-        st.title(f"🎯 {component_name} - Component Capability Status")
         
         # Display refresh button with last updated time
         display_refresh_button()
@@ -1591,6 +1835,8 @@ def main():
     border: 1px solid #ddd;
     padding: 10px;
     text-align: left;
+    word-wrap: break-word;
+    max-width: 300px;
 }
 .details-table a {
     color: #1f77b4;
@@ -1604,6 +1850,7 @@ def main():
 
 <table class="details-table">
 <tr>
+<th>Parent EPIC</th>
 <th>Issue</th>
 <th>Type</th>
 <th>Summary</th>
@@ -1625,8 +1872,53 @@ def main():
                         # Get issue type
                         issue_type = issue.fields.issuetype.name if issue.fields.issuetype else 'N/A'
                         
-                        # Format summary (truncate if too long)
-                        summary = issue.fields.summary[:50] + ('...' if len(issue.fields.summary) > 50 else '')
+                        # Get full summary (no truncation)
+                        summary = issue.fields.summary
+                        
+                        # Get Parent EPIC
+                        parent_epic_key = None
+                        parent_epic_name = 'N/A'
+                        
+                        # First, check if issue has a parent field (standard Jira parent relationship)
+                        if hasattr(issue.fields, 'parent') and issue.fields.parent:
+                            try:
+                                if hasattr(issue.fields.parent, 'key'):
+                                    parent_epic_key = issue.fields.parent.key
+                                elif isinstance(issue.fields.parent, dict) and 'key' in issue.fields.parent:
+                                    parent_epic_key = issue.fields.parent['key']
+                            except (AttributeError, KeyError, TypeError):
+                                pass
+                        
+                        # If no parent, try custom field Epic Link IDs
+                        if not parent_epic_key:
+                            for field_id in ['customfield_10014', 'customfield_10011', 'customfield_10051']:
+                                if hasattr(issue.fields, field_id):
+                                    epic_obj = getattr(issue.fields, field_id)
+                                    if epic_obj:
+                                        try:
+                                            # Try to access as object first
+                                            if hasattr(epic_obj, 'key'):
+                                                parent_epic_key = epic_obj.key
+                                            # Then try as dict
+                                            elif isinstance(epic_obj, dict) and 'key' in epic_obj:
+                                                parent_epic_key = epic_obj['key']
+                                            if parent_epic_key:
+                                                break
+                                        except (AttributeError, KeyError, TypeError):
+                                            continue
+                        
+                        # If we have a parent epic key, fetch its name
+                        if parent_epic_key and jira:
+                            try:
+                                parent_issue = jira.issue(parent_epic_key)
+                                parent_epic_name = parent_issue.fields.summary if parent_issue.fields.summary else parent_epic_key
+                            except Exception as e:
+                                logger.debug(f"Error fetching parent epic {parent_epic_key}: {str(e)}")
+                                parent_epic_name = parent_epic_key
+                            
+                            parent_epic_link = f'<a href="{jira_url}/browse/{parent_epic_key}" target="_blank">{parent_epic_name}</a>'
+                        else:
+                            parent_epic_link = 'N/A'
                         
                         # Create clickable issue link using HTML anchor
                         issue_link = f'<a href="{jira_url}/browse/{issue.key}" target="_blank">{issue.key}</a>'
@@ -1634,7 +1926,7 @@ def main():
                         resolution_approach = issue.fields.customfield_10051 if hasattr(issue.fields, 'customfield_10051') else 'N/A'
                         due_date = issue.fields.duedate if issue.fields.duedate else 'N/A'
                         
-                        html_table += f"<tr><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{resolution_approach}</td><td>{due_date}</td><td>{fix_version}</td></tr>"
+                        html_table += f"<tr><td>{parent_epic_link}</td><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{resolution_approach}</td><td>{due_date}</td><td>{fix_version}</td></tr>"
                     
                     html_table += "</table>"
                     
@@ -1671,6 +1963,8 @@ def main():
     border: 1px solid #ddd;
     padding: 10px;
     text-align: left;
+    word-wrap: break-word;
+    max-width: 300px;
 }
 .details-table a {
     color: #1f77b4;
@@ -1684,6 +1978,7 @@ def main():
 
 <table class="details-table">
 <tr>
+<th>Parent EPIC</th>
 <th>Issue</th>
 <th>Type</th>
 <th>Summary</th>
@@ -1705,8 +2000,53 @@ def main():
                         # Get issue type
                         issue_type = issue.fields.issuetype.name if issue.fields.issuetype else 'N/A'
                         
-                        # Format summary (truncate if too long)
-                        summary = issue.fields.summary[:50] + ('...' if len(issue.fields.summary) > 50 else '')
+                        # Get full summary (no truncation)
+                        summary = issue.fields.summary
+                        
+                        # Get Parent EPIC
+                        parent_epic_key = None
+                        parent_epic_name = 'N/A'
+                        
+                        # First, check if issue has a parent field (standard Jira parent relationship)
+                        if hasattr(issue.fields, 'parent') and issue.fields.parent:
+                            try:
+                                if hasattr(issue.fields.parent, 'key'):
+                                    parent_epic_key = issue.fields.parent.key
+                                elif isinstance(issue.fields.parent, dict) and 'key' in issue.fields.parent:
+                                    parent_epic_key = issue.fields.parent['key']
+                            except (AttributeError, KeyError, TypeError):
+                                pass
+                        
+                        # If no parent, try custom field Epic Link IDs
+                        if not parent_epic_key:
+                            for field_id in ['customfield_10014', 'customfield_10011', 'customfield_10051']:
+                                if hasattr(issue.fields, field_id):
+                                    epic_obj = getattr(issue.fields, field_id)
+                                    if epic_obj:
+                                        try:
+                                            # Try to access as object first
+                                            if hasattr(epic_obj, 'key'):
+                                                parent_epic_key = epic_obj.key
+                                            # Then try as dict
+                                            elif isinstance(epic_obj, dict) and 'key' in epic_obj:
+                                                parent_epic_key = epic_obj['key']
+                                            if parent_epic_key:
+                                                break
+                                        except (AttributeError, KeyError, TypeError):
+                                            continue
+                        
+                        # If we have a parent epic key, fetch its name
+                        if parent_epic_key and jira:
+                            try:
+                                parent_issue = jira.issue(parent_epic_key)
+                                parent_epic_name = parent_issue.fields.summary if parent_issue.fields.summary else parent_epic_key
+                            except Exception as e:
+                                logger.debug(f"Error fetching parent epic {parent_epic_key}: {str(e)}")
+                                parent_epic_name = parent_epic_key
+                            
+                            parent_epic_link = f'<a href="{jira_url}/browse/{parent_epic_key}" target="_blank">{parent_epic_name}</a>'
+                        else:
+                            parent_epic_link = 'N/A'
                         
                         # Create clickable issue link using HTML anchor
                         issue_link = f'<a href="{jira_url}/browse/{issue.key}" target="_blank">{issue.key}</a>'
@@ -1714,7 +2054,7 @@ def main():
                         resolution_approach = issue.fields.customfield_10051 if hasattr(issue.fields, 'customfield_10051') else 'N/A'
                         due_date = issue.fields.duedate if issue.fields.duedate else 'N/A'
                         
-                        html_table += f"<tr><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{resolution_approach}</td><td>{due_date}</td><td>{fix_version}</td></tr>"
+                        html_table += f"<tr><td>{parent_epic_link}</td><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{resolution_approach}</td><td>{due_date}</td><td>{fix_version}</td></tr>"
                     
                     html_table += "</table>"
                     
@@ -1803,7 +2143,6 @@ def main():
     # SPRINT METRICS (Placeholder)
     # ========================================================================
     elif st.session_state.current_page == 'Sprint Metrics':
-        st.title("📈 Sprint Metrics")
         st.info("This is a placeholder page. Feature coming soon!")
         st.write("This page will display:")
         st.write("- Velocity trends")
@@ -1815,13 +2154,20 @@ def main():
     # CUSTOM REPORTS (Placeholder)
     # ========================================================================
     elif st.session_state.current_page == 'Custom Reports':
-        st.title("📊 Custom Reports")
         st.info("This is a placeholder page. Feature coming soon!")
         st.write("This page will display:")
         st.write("- Custom JQL queries")
         st.write("- Exportable reports")
         st.write("- Issue breakdowns")
         st.write("- Team metrics")
+    
+    # ========================================================================
+    # DISPLAY BRANDED FOOTER
+    # ========================================================================
+    try:
+        display_branded_footer()
+    except Exception as e:
+        logger.error(f"Error displaying footer: {str(e)}")
 
 
 # ============================================================================
