@@ -302,6 +302,9 @@ with st.sidebar:
     if 'selected_component' not in st.session_state:
         st.session_state.selected_component = None
     
+    if 'last_updated_time' not in st.session_state:
+        st.session_state.last_updated_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
     # Main page selection
     main_pages = ['Home', 'Sprint Status', 'Component Capability Status', 'Sprint Metrics', 'Custom Reports']
     current_index = main_pages.index(st.session_state.current_page.split(' - ')[0]) if st.session_state.current_page.split(' - ')[0] in main_pages else 0
@@ -680,21 +683,85 @@ def get_flagged_issues(_jira, project_key, component_name):
 
 def get_flagged_comment(issue):
     """
-    Extract the comment associated with the flag from an issue.
+    Extract the comment linked to the flag from an issue.
+    Searches for the comment that has the 'Flagged' property, not just the latest comment.
     
     Args:
         issue: Jira issue object
     
     Returns:
-        String with the flagged comment body, or N/A if not found
+        String with the flagged comment body, or description/latest comment as fallback
     """
     try:
-        # Try to get flag comment from issue comments
         if issue.fields.comment and issue.fields.comment.comments:
-            # Return the most recent comment (likely related to the flag)
+            # First, try to find the comment linked to the flag
+            # In Jira Cloud, flagged comments may have properties indicating the flag
+            flagged_comment = None
+            
+            for comment in issue.fields.comment.comments:
+                # Check if comment has properties (which may indicate it's linked to the flag)
+                if hasattr(comment, 'properties') and comment.properties:
+                    for prop in comment.properties:
+                        # Look for flag-related properties
+                        if hasattr(prop, 'key') and ('flag' in prop.key.lower() or 'agile' in prop.key.lower()):
+                            flagged_comment = comment
+                            break
+                
+                # Alternative: Check if comment body contains flag reference
+                if flagged_comment is None and hasattr(comment, 'body') and comment.body:
+                    if 'flagged' in comment.body.lower():
+                        flagged_comment = comment
+                
+                if flagged_comment:
+                    break
+            
+            # If no flagged comment found via properties, try to find via changelog
+            if not flagged_comment and hasattr(issue, 'changelog') and issue.changelog:
+                # Find when the flag was added from changelog
+                flag_added_time = None
+                for history in issue.changelog.histories:
+                    for item in history.items:
+                        if item.field == 'Flagged' and item.toString and item.toString.strip():
+                            flag_added_time = history.created
+                            break
+                    if flag_added_time:
+                        break
+                
+                # If flag was added, find comment closest to that time
+                if flag_added_time:
+                    from datetime import datetime as dt
+                    flag_time = dt.fromisoformat(flag_added_time.replace('Z', '+00:00'))
+                    closest_comment = None
+                    smallest_diff = None
+                    
+                    for comment in issue.fields.comment.comments:
+                        comment_time = dt.fromisoformat(comment.created.replace('Z', '+00:00'))
+                        time_diff = abs((flag_time - comment_time).total_seconds())
+                        
+                        # Get comment within 5 minutes of flag creation
+                        if time_diff <= 300:  # 5 minutes
+                            if smallest_diff is None or time_diff < smallest_diff:
+                                smallest_diff = time_diff
+                                closest_comment = comment
+                    
+                    if closest_comment:
+                        flagged_comment = closest_comment
+            
+            # Return flagged comment if found
+            if flagged_comment:
+                comment_body = flagged_comment.body if hasattr(flagged_comment, 'body') and flagged_comment.body else 'No comment text'
+                return comment_body[:150] + ('...' if len(comment_body) > 150 else '')
+            
+            # Fallback: return the second-to-last comment (which is often the flag comment)
+            # since discussions may continue after flagging
+            if len(issue.fields.comment.comments) >= 2:
+                fallback_comment = issue.fields.comment.comments[-2]
+                comment_body = fallback_comment.body if fallback_comment.body else 'No comment text'
+                return comment_body[:150] + ('...' if len(comment_body) > 150 else '')
+            
+            # Final fallback: latest comment
             latest_comment = issue.fields.comment.comments[-1]
             comment_body = latest_comment.body if latest_comment.body else 'No comment text'
-            # Truncate at 150 chars for display
             return comment_body[:150] + ('...' if len(comment_body) > 150 else '')
         
         # Fallback to issue description if no comments
@@ -706,6 +773,25 @@ def get_flagged_comment(issue):
     
     except Exception as e:
         return 'Error retrieving comment'
+
+
+def display_refresh_button():
+    """
+    Display a consistent refresh button with last updated timestamp across all pages.
+    Returns True if refresh was clicked, False otherwise.
+    """
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        st.caption(f"Last Updated: {st.session_state.last_updated_time}")
+    
+    with col2:
+        if st.button("🔄 Refresh", use_container_width=True):
+            st.session_state.last_updated_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            st.rerun()
+            return True
+    
+    return False
 
 
 # ============================================================================
@@ -738,11 +824,8 @@ def main():
     if st.session_state.current_page == 'Home':
         st.title("🏠 Home - Jira Dashboard")
         
-        # Manual refresh button
-        col1, col2 = st.columns([3, 1])
-        with col2:
-            if st.button("🔄 Refresh", use_container_width=True):
-                st.rerun()
+        # Display refresh button with last updated time
+        display_refresh_button()
         
         st.divider()
         
@@ -918,7 +1001,7 @@ def main():
             st.markdown("##### 📦 Last 5 Released Versions:")
             if released_versions:
                 for version in released_versions:
-                    with st.container(border=True, height=160):
+                    with st.container(border=True):
                         # Make title clickable
                         version_url = f"{jira_config['url']}/projects/{jira_config['project_key']}/versions/{version['version_id']}/tab/release-report-all-issues"
                         st.markdown(f"[**{version['name']}**]({version_url})", unsafe_allow_html=True)
@@ -932,7 +1015,7 @@ def main():
             st.markdown("##### 🎯 Next 5 Upcoming Versions:")
             if upcoming_versions:
                 for version in upcoming_versions:
-                    with st.container(border=True, height=160):
+                    with st.container(border=True):
                         # Make title clickable
                         version_url = f"{jira_config['url']}/projects/{jira_config['project_key']}/versions/{version['version_id']}/tab/release-report-all-issues"
                         st.markdown(f"[**{version['name']}**]({version_url})", unsafe_allow_html=True)
@@ -948,13 +1031,10 @@ def main():
     elif st.session_state.current_page.startswith('Sprint Status - '):
         component_name = st.session_state.selected_component
         
-        st.title(f"📅 {component_name} - Weekly Status")
+        st.title(f"📅 {component_name} - Sprint Status")
         
-        # Manual refresh button
-        col1, col2 = st.columns([3, 1])
-        with col2:
-            if st.button("🔄 Refresh", use_container_width=True):
-                st.rerun()
+        # Display refresh button with last updated time
+        display_refresh_button()
         
         st.divider()
         
@@ -1037,14 +1117,8 @@ def main():
         
         st.title(f"🎯 {component_name} - Component Capability Status")
         
-        # Manual refresh button
-        col1, col2, col3 = st.columns([2, 1, 1])
-        with col2:
-            if st.button("🔄 Refresh", use_container_width=True):
-                st.rerun()
-        with col3:
-            last_updated = datetime.now().strftime("%H:%M:%S")
-            st.caption(f"Updated: {last_updated}")
+        # Display refresh button with last updated time
+        display_refresh_button()
         
         st.divider()
         
@@ -1345,8 +1419,8 @@ def main():
             # Add legend explaining arrows
             legend_html = """
             <div style="font-size: 12px; color: #666; margin-top: 10px; font-style: italic;">
-                <strong>Legend:</strong> 
-                <span style='color: #388e3c;'>↑ Green up arrow</span> = Increased (more issues compared to 7 days ago) | 
+                <strong>Legend:</strong> <br/>
+                <span style='color: #388e3c;'>↑ Green up arrow</span> = Increased (more issues compared to 7 days ago) <br/>
                 <span style='color: #388e3c;'>↓ Green down arrow</span> = Decreased (fewer issues compared to 7 days ago)
             </div>
             """
