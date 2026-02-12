@@ -473,7 +473,7 @@ def display_branded_footer():
         
         <div class="wk-footer">
             <div class="wk-footer-content">
-                <span class="wk-footer-text">© Wolters Kluwer</span>
+                <span class="wk-footer-text">©2026 Wolters Kluwer</span>
                 <span class="wk-footer-divider">|</span>
                 <span class="wk-footer-team">InfraOps Engineering Team</span>
                 <span class="wk-footer-divider">|</span>
@@ -901,13 +901,247 @@ def get_critical_high_issues(jira, project_key, component_name, sprint_id=None, 
             # Backlog issues (not in current sprint and no sprint)
             jql = f'{base_query} AND (sprint != {sprint_id} OR sprint is EMPTY) ORDER BY priority DESC, created DESC'
         
-        issues = jira.search_issues(jql, maxResults=100, expand='changelog')
+        # Get issues without fields restriction to get all available fields including sprint
+        # Then fetch each issue individually to ensure all fields are populated
+        initial_issues = jira.search_issues(jql, maxResults=100, expand='changelog')
         
-        return issues if issues else None
+        if not initial_issues:
+            return None
+        
+        # Re-fetch each issue to ensure all fields including sprint are available
+        full_issues = []
+        for issue in initial_issues:
+            try:
+                # Fetch the issue with all available data
+                full_issue = jira.issue(issue.key, expand='changelog')
+                full_issues.append(full_issue)
+            except Exception as e:
+                logger.debug(f"Error fetching full issue {issue.key}: {str(e)}")
+                # Fallback to the initial issue if re-fetch fails
+                full_issues.append(issue)
+        
+        return full_issues if full_issues else None
     
     except Exception as e:
         st.error(f"Error fetching critical/high issues: {str(e)}")
         return None
+
+
+def get_target_completion_date(issue, jira=None, base_url=None, debug=False):
+    """
+    Get the target completion date for an issue.
+    Priority:
+    1. If due_date exists, return it
+    2. If no due_date, try to get sprint end date (if issue is assigned to a sprint)
+    3. If not assigned to any sprint, return "N/A"
+    
+    Args:
+        issue: Jira issue object
+        jira: Jira connection (optional, needed for REST API calls)
+        base_url: Jira server URL (needed for REST API calls)
+        debug: If True, also returns debug info as tuple (result, debug_info)
+    
+    Returns:
+        String with display text and optional hint
+        If debug=True: tuple of (result_string, {debug_info})
+    """
+    debug_info = {}
+    try:
+        # Check if due_date exists
+        if issue.fields.duedate:
+            debug_info['due_date_found'] = issue.fields.duedate
+            if debug:
+                return issue.fields.duedate, debug_info
+            return issue.fields.duedate
+        
+        debug_info['due_date_found'] = False
+        
+        # Try to get sprint information via REST API if jira connection provided
+        sprint_end_date = None
+        sprint_source = None
+        
+        if jira and base_url:
+            try:
+                # Use REST API to get all fields including sprint data
+                base_url = base_url.rstrip('/')
+                response = jira._session.get(f"{base_url}/rest/api/3/issue/{issue.key}")
+                if response.status_code == 200:
+                    issue_data = response.json()
+                    fields_data = issue_data.get('fields', {})
+                    debug_info['rest_api_fields_checked'] = True
+                    
+                    # Check customfield_10020 which contains sprint data for this Jira instance
+                    sprint_field = fields_data.get('customfield_10020')
+                    if sprint_field:
+                        debug_info['sprint_from_rest_api'] = f'customfield_10020: {str(sprint_field)[:150]}'
+                        
+                        # Sprint field should be a list of sprint objects
+                        if isinstance(sprint_field, list) and len(sprint_field) > 0:
+                            sprint_data = sprint_field[0]  # Get the first (active) sprint
+                            if isinstance(sprint_data, dict) and 'endDate' in sprint_data:
+                                sprint_end_date = sprint_data['endDate']
+                                sprint_source = 'customfield_10020.endDate (REST API)'
+            except Exception as e:
+                debug_info['rest_api_error'] = str(e)
+        
+        # Fallback: Try direct sprint field if it exists
+        if not sprint_end_date:
+            sprint_related = [f for f in dir(issue.fields) if 'sprint' in f.lower()]
+            debug_info['sprint_related_fields'] = sprint_related
+            
+            if hasattr(issue.fields, 'sprint') and issue.fields.sprint:
+                sprint_data = issue.fields.sprint
+                debug_info['sprint_field_exists'] = True
+                debug_info['sprint_field_type'] = str(type(sprint_data))
+                debug_info['sprint_field_value'] = str(sprint_data)[:200]
+                
+                # Sprint data might be a list
+                if isinstance(sprint_data, list) and len(sprint_data) > 0:
+                    sprint_data = sprint_data[0]
+                
+                # Try extracting endDate from sprint object or dict
+                if hasattr(sprint_data, 'endDate'):
+                    sprint_end_date = getattr(sprint_data, 'endDate', None)
+                    sprint_source = 'sprint.endDate (object)'
+                elif isinstance(sprint_data, dict) and 'endDate' in sprint_data:
+                    sprint_end_date = sprint_data.get('endDate')
+                    sprint_source = 'sprint.endDate (dict)'
+                elif isinstance(sprint_data, str):
+                    # Sprint might be a string representation, try to parse it
+                    import re
+                    match = re.search(r'endDate=([^,\]]+)', str(sprint_data))
+                    if match:
+                        sprint_end_date = match.group(1)
+                        sprint_source = 'sprint.endDate (regex parse)'
+            else:
+                debug_info['sprint_field_exists'] = False
+        
+        # If not found, try common custom field IDs for sprint
+        if not sprint_end_date:
+            sprint_field_ids = ['customfield_10010', 'customfield_10001', 'customfield_10006', 'customfield_10007']
+            
+            for field_id in sprint_field_ids:
+                if hasattr(issue.fields, field_id):
+                    sprint_data = getattr(issue.fields, field_id, None)
+                    if sprint_data:
+                        debug_info[f'{field_id}_found'] = True
+                        debug_info[f'{field_id}_type'] = str(type(sprint_data))
+                        debug_info[f'{field_id}_value'] = str(sprint_data)[:200]
+                        
+                        # Sprint data might be a list or a single object
+                        if isinstance(sprint_data, list) and len(sprint_data) > 0:
+                            sprint_data = sprint_data[0]
+                        
+                        # Try extracting endDate
+                        try:
+                            if hasattr(sprint_data, 'endDate'):
+                                sprint_end_date = getattr(sprint_data, 'endDate', None)
+                                sprint_source = f'{field_id}.endDate (object)'
+                        except (AttributeError, TypeError):
+                            pass
+                        
+                        # Try as dictionary
+                        if not sprint_end_date and isinstance(sprint_data, dict):
+                            sprint_end_date = sprint_data.get('endDate', None)
+                            if sprint_end_date:
+                                sprint_source = f'{field_id}.endDate (dict)'
+                        
+                        # Try parsing from string
+                        if not sprint_end_date and isinstance(sprint_data, str):
+                            import re
+                            match = re.search(r'endDate=([^,\]]+)', str(sprint_data))
+                            if match:
+                                sprint_end_date = match.group(1)
+                                sprint_source = f'{field_id}.endDate (regex parse)'
+                        
+                        if sprint_end_date:
+                            break
+        
+        debug_info['sprint_end_date_found'] = sprint_end_date is not None
+        debug_info['sprint_source'] = sprint_source
+        
+        # Format and return the sprint end date if found
+        if sprint_end_date:
+            try:
+                # Clean up the date string
+                date_str = str(sprint_end_date).replace('Z', '+00:00').split('T')[0] if 'T' in str(sprint_end_date) else str(sprint_end_date)
+                
+                # Try parsing as ISO format if it looks like a date
+                if len(date_str) >= 10:
+                    date_obj = datetime.fromisoformat(date_str.replace('Z', '+00:00')[:10])
+                    formatted_date = date_obj.strftime('%Y-%m-%d')
+                    debug_info['formatted_date'] = formatted_date
+                    # Format with styled hint
+                    result = f"{formatted_date} <span style='color: #999; font-size: 0.85em; font-style: italic;'>(Sprint Date)</span>"
+                    if debug:
+                        return result, debug_info
+                    return result
+                else:
+                    result = f"{sprint_end_date} <span style='color: #999; font-size: 0.85em; font-style: italic;'>(Sprint Date)</span>"
+                    if debug:
+                        return result, debug_info
+                    return result
+            except Exception as date_format_error:
+                logger.debug(f"Error formatting sprint end date '{sprint_end_date}': {str(date_format_error)}")
+                debug_info['formatting_error'] = str(date_format_error)
+                result = f"{sprint_end_date} <span style='color: #999; font-size: 0.85em; font-style: italic;'>(Sprint Date)</span>"
+                if debug:
+                    return result, debug_info
+                return result
+        
+        # If no sprint assignment or sprint end date found, return N/A
+        if debug:
+            return "N/A", debug_info
+        return "N/A"
+    
+    except Exception as e:
+        logger.debug(f"Error getting target completion date: {str(e)}")
+        debug_info['error'] = str(e)
+        if debug:
+            return "N/A", debug_info
+        return "N/A"
+
+
+def get_resolution_approach(issue):
+    """
+    Get the Resolution Approach / Progress Notes field from an issue.
+    
+    Args:
+        issue: Jira issue object
+    
+    Returns:
+        Resolution approach text or 'N/A' if not found or empty
+    """
+    try:
+        # The correct field ID for Resolution approach / Progress notes
+        field_id = 'customfield_11249'
+        
+        if hasattr(issue.fields, field_id):
+            value = getattr(issue.fields, field_id)
+            if value:  # Only return if value is not None/empty
+                # Handle different value types
+                if isinstance(value, str):
+                    # Clean up whitespace and return
+                    cleaned = value.strip()
+                    if cleaned:
+                        return cleaned[:500]  # Truncate very long text
+                elif isinstance(value, dict):
+                    # Could be a complex field object
+                    if 'value' in value:
+                        return str(value['value']).strip()[:500]
+                    elif 'name' in value:
+                        return str(value['name']).strip()[:500]
+                # For other types, convert to string
+                val_str = str(value).strip()
+                if val_str and val_str.lower() != 'none':
+                    return val_str[:500]
+        
+        # If nothing found or empty, return N/A
+        return 'N/A'
+    
+    except Exception as e:
+        logger.debug(f"Error getting resolution approach: {str(e)}")
+        return 'N/A'
 
 
 @st.cache_data(ttl=CACHE_TTL)
@@ -1923,10 +2157,10 @@ def main():
                         # Create clickable issue link using HTML anchor
                         issue_link = f'<a href="{jira_url}/browse/{issue.key}" target="_blank">{issue.key}</a>'
                         priority = issue.fields.priority.name if issue.fields.priority else 'N/A'
-                        resolution_approach = issue.fields.customfield_10051 if hasattr(issue.fields, 'customfield_10051') else 'N/A'
-                        due_date = issue.fields.duedate if issue.fields.duedate else 'N/A'
+                        resolution_approach = get_resolution_approach(issue)
+                        target_completion = get_target_completion_date(issue, jira=jira, base_url=jira_url)
                         
-                        html_table += f"<tr><td>{parent_epic_link}</td><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{resolution_approach}</td><td>{due_date}</td><td>{fix_version}</td></tr>"
+                        html_table += f"<tr><td>{parent_epic_link}</td><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{resolution_approach}</td><td>{target_completion}</td><td>{fix_version}</td></tr>"
                     
                     html_table += "</table>"
                     
@@ -2051,10 +2285,10 @@ def main():
                         # Create clickable issue link using HTML anchor
                         issue_link = f'<a href="{jira_url}/browse/{issue.key}" target="_blank">{issue.key}</a>'
                         priority = issue.fields.priority.name if issue.fields.priority else 'N/A'
-                        resolution_approach = issue.fields.customfield_10051 if hasattr(issue.fields, 'customfield_10051') else 'N/A'
-                        due_date = issue.fields.duedate if issue.fields.duedate else 'N/A'
+                        resolution_approach = get_resolution_approach(issue)
+                        target_completion = get_target_completion_date(issue, jira=jira, base_url=jira_url)
                         
-                        html_table += f"<tr><td>{parent_epic_link}</td><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{resolution_approach}</td><td>{due_date}</td><td>{fix_version}</td></tr>"
+                        html_table += f"<tr><td>{parent_epic_link}</td><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{resolution_approach}</td><td>{target_completion}</td><td>{fix_version}</td></tr>"
                     
                     html_table += "</table>"
                     
