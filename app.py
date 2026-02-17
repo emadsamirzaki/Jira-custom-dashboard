@@ -90,7 +90,13 @@ def handle_oauth_callback(oauth_config: dict, jira_config: dict):
     Handle OAuth 2.0 callback from Atlassian.
     
     Checks query params for auth code and exchanges it for token.
+    Only processes if not already authenticated.
     """
+    # If already authenticated, don't reprocess the callback
+    if st.session_state.get('authenticated'):
+        logger.info("Already authenticated, skipping OAuth callback processing")
+        return False
+    
     query_params = get_query_params()
     
     if 'code' not in query_params:
@@ -147,8 +153,8 @@ def handle_oauth_callback(oauth_config: dict, jira_config: dict):
         st.error(f"❌ Unexpected error during authentication: {error_msg}")
 
 
-def render_user_menu():
-    """Render compact user menu with logout option in sidebar (like Jira)."""
+def render_user_menu_top_right():
+    """Render compact user menu in top right corner like Jira."""
     user_info = st.session_state.get('user_info', {})
     
     if not user_info:
@@ -158,42 +164,33 @@ def render_user_menu():
     email = user_info.get('email', 'N/A')
     picture = user_info.get('picture')
     
-    # Create a compact menu using a column layout
-    st.sidebar.divider()
+    # Create top right menu using columns
+    col_spacer, col_menu = st.columns([4, 1])
     
-    # Use columns for compact layout
-    col1, col2 = st.sidebar.columns([1, 4])
-    
-    with col1:
-        # Display avatar
-        if picture:
-            st.image(picture, width=40)
-        else:
-            st.markdown("👤")
-    
-    with col2:
-        st.markdown(f"**{name}**")
-        st.caption(email)
-    
-    # Logout button in a compact form
-    if st.sidebar.button("🚪 Logout", use_container_width=True, key="logout_btn"):
-        # Clear all session state
-        st.session_state.authenticated = False
-        st.session_state.access_token = None
-        st.session_state.refresh_token = None
-        st.session_state.user_info = None
-        st.session_state.current_page = 'Home'
-        st.session_state.selected_component = None
-        st.rerun()
+    with col_menu:
+        # Expandable menu in top right
+        with st.expander("👤", expanded=False):
+            st.markdown(f"**{name}**")
+            st.caption(email)
+            
+            if picture:
+                st.image(picture, width=80)
+            
+            st.divider()
+            
+            if st.button("🚪 Logout", use_container_width=True, key="logout_btn_top"):
+                # Clear all session state
+                st.session_state.authenticated = False
+                st.session_state.access_token = None
+                st.session_state.refresh_token = None
+                st.session_state.user_info = None
+                st.session_state.current_page = 'Home'
+                st.session_state.selected_component = None
+                st.rerun()
 
 
-def render_logout_button():
-    """Legacy function - consolidated into render_user_menu()."""
-    pass
-
-
-def render_user_info_sidebar():
-    """Legacy function - consolidated into render_user_menu()."""
+def render_user_menu():
+    """Legacy function - consolidated into render_user_menu_top_right()."""
     pass
 
 
@@ -246,12 +243,12 @@ def main():
     
     # === DASHBOARD RENDERING (for authenticated users or config-based auth) ===
     
+    # Render user menu in top right if OAuth authenticated
+    if oauth_enabled and st.session_state.authenticated:
+        render_user_menu_top_right()
+    
     # Render sidebar navigation
     render_sidebar()
-    
-    # Render compact user menu if OAuth authenticated
-    if oauth_enabled and st.session_state.authenticated:
-        render_user_menu()
     
     # Get current page from session state
     current_page = st.session_state.get('current_page', 'Home')
