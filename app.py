@@ -29,6 +29,21 @@ st.set_page_config(
     layout="wide"
 )
 
+# Hide Streamlit's default menu toolbar in the sidebar for cleaner UI
+hide_streamlit_style = """
+    <style>
+    # Hide the top toolbar and user menu
+    [data-testid="stToolbar"] {
+        display: none;
+    }
+    # Hide the deploy button
+    #MainMenu {
+        display: none;
+    }
+    </style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 # Import modular components
 from config.loader import load_config
 from components.sidebar import render_sidebar
