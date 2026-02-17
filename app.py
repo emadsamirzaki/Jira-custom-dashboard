@@ -135,14 +135,30 @@ def handle_oauth_callback(oauth_config: dict, jira_config: dict):
             st.session_state.access_token = access_token
             st.session_state.refresh_token = token_data.get('refresh_token')
             st.session_state.user_info = user_info
-            st.session_state.token_expires_at = None  # Implement expiry tracking if needed
+            st.session_state.token_expires_at = None
             
             logger.info(f"User {user_info.get('email')} authenticated successfully")
             st.success("✅ Successfully logged in!")
             
-            # NOW clear query params after authentication is complete
-            clear_query_params()
+            # Clear query params and reload URL cleanly
+            try:
+                # Try to clear modern query params
+                st.query_params.clear()
+            except:
+                pass
             
+            # Use JavaScript to clean the URL in browser history
+            st.markdown("""
+                <script>
+                window.history.replaceState({}, document.title, window.location.pathname);
+                </script>
+            """, unsafe_allow_html=True)
+            
+            # Brief pause before rerun to ensure params are cleared
+            import time
+            time.sleep(0.5)
+            st.rerun()
+        
     except JiraOAuthError as e:
         error_msg = str(e)
         logger.error(f"OAuth callback error: {error_msg}")
@@ -211,7 +227,23 @@ def main():
     
     # Handle OAuth callback if present
     query_params = get_query_params()
-    if oauth_enabled and 'code' in query_params:
+    
+    # If already authenticated but URL still has code param, clean the URL
+    if oauth_enabled and st.session_state.authenticated and 'code' in query_params:
+        logger.info("Already authenticated with lingering code param - cleaning URL")
+        try:
+            st.query_params.clear()
+        except:
+            pass
+        # Clean browser URL
+        st.markdown("""
+            <script>
+            window.history.replaceState({}, document.title, window.location.pathname);
+            </script>
+        """, unsafe_allow_html=True)
+    
+    # Handle OAuth callback if present AND not already authenticated
+    if oauth_enabled and not st.session_state.authenticated and 'code' in query_params:
         handle_oauth_callback(oauth_config, jira_config)
     
     # Redirect to login if OAuth enabled and not authenticated
