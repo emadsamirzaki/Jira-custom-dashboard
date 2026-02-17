@@ -35,7 +35,13 @@ def get_authorization_url(oauth_config: Dict, state: str = None) -> str:
         params['state'] = state
     
     auth_url = oauth_config['auth_url']
-    return f"{auth_url}?{urllib.parse.urlencode(params)}"
+    full_url = f"{auth_url}?{urllib.parse.urlencode(params)}"
+    
+    # Debug logging
+    logger.info(f"Generated OAuth URL: {full_url}")
+    logger.info(f"Redirect URI in request: {oauth_config['redirect_uri']}")
+    
+    return full_url
 
 
 def exchange_code_for_token(

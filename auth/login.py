@@ -38,25 +38,30 @@ def render_login_page(oauth_config: dict, jira_config: dict):
         </div>
         """, unsafe_allow_html=True)
         
-        # Login button
-        if st.button(
-            "🔐 Login with Jira",
-            use_container_width=True,
-            key="login_button"
-        ):
-            try:
-                # Generate authorization URL
-                auth_url = get_authorization_url(oauth_config)
-                
-                # Redirect to Atlassian login
-                st.info("Redirecting to Atlassian login...")
-                st.markdown(f'<meta http-equiv="refresh" content="0;url={auth_url}" />', 
-                           unsafe_allow_html=True)
-                
-            except JiraOAuthError as e:
-                st.error(f"❌ Login Error: {str(e)}")
-            except Exception as e:
-                st.error(f"❌ Unexpected error: {str(e)}")
+        # Generate authorization URL
+        try:
+            auth_url = get_authorization_url(oauth_config)
+            
+            # Display login button as a link
+            st.markdown(f"""
+            <div style="text-align: center; margin: 20px 0;">
+                <a href="{auth_url}" style="
+                    display: inline-block;
+                    padding: 12px 32px;
+                    background-color: #0052CC;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 3px;
+                    font-weight: 600;
+                    font-size: 16px;
+                ">🔐 Login with Jira</a>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        except JiraOAuthError as e:
+            st.error(f"❌ Login Error: {str(e)}")
+        except Exception as e:
+            st.error(f"❌ Unexpected error: {str(e)}")
         
         st.markdown("---")
         
