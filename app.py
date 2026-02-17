@@ -30,12 +30,9 @@ st.set_page_config(
 )
 
 # Hide Streamlit's default menu toolbar in the sidebar for cleaner UI
+# Keep the settings/gear icon visible at top right
 hide_streamlit_style = """
     <style>
-    /* Hide the top toolbar */
-    [data-testid="stToolbar"] {
-        display: none !important;
-    }
     /* Hide main menu */
     #MainMenu {
         display: none !important;
