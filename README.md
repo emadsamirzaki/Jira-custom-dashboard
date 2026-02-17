@@ -4,13 +4,17 @@ A simple Streamlit application to connect with Jira Cloud and display project an
 
 ## ✨ Features
 
-- **Jira Cloud Integration**: Connect securely using API token authentication
+- **Jira Cloud Integration**: Connect securely using:
+  - **OAuth 2.0** authentication (recommended) - Users log in via Atlassian
+  - **API Token** authentication (fallback) - Uses API token from config
 - **Project Information**: Display project name, key, and description
 - **Active Sprint Details**: Show current sprint name, start date, and end date
 - **Sidebar Navigation**: Easy navigation between different dashboard pages
 - **Manual Refresh**: Button to manually refresh data from Jira
 - **Error Handling**: Clear error messages for connection issues
 - **Placeholder Pages**: Framework for future features (Tech Debt, Sprint Metrics, Custom Reports)
+- **User Session Management**: OAuth login shows user info and avatar
+- **Access Control**: Restrict access to specific Jira instances (wkengineering.atlassian.net)
 
 ## 📋 Prerequisites
 
@@ -18,17 +22,50 @@ A simple Streamlit application to connect with Jira Cloud and display project an
 - Jira Cloud account with API access
 - Internet connection to reach Jira Cloud
 
-## 🔧 Setup Instructions
+## � Authentication Methods
 
-### Step 1: Install Dependencies
+This dashboard supports two authentication methods:
 
-Navigate to the project directory and install required packages:
+### 1. OAuth 2.0 (Recommended) ⭐
 
-```bash
-pip install -r requirements.txt
+Users log in using their Atlassian account. Secure and no API token needed.
+
+**Setup**: See [OAUTH_SETUP.md](OAUTH_SETUP.md) for detailed instructions.
+
+```yaml
+oauth:
+  enabled: true
+  client_id: "YOUR_CLIENT_ID"
+  client_secret: "YOUR_CLIENT_SECRET"
+  redirect_uri: "http://localhost:8501"
 ```
 
-### Step 2: Get Your Jira API Token
+### 2. API Token (Fallback)
+
+Uses static API token from config (good for automation/scripts).
+
+```yaml
+oauth:
+  enabled: false
+
+jira:
+  email: "your-email@example.com"
+  api_token: "YOUR_API_TOKEN"
+```
+
+## 🔧 Setup Instructions
+
+### Using OAuth 2.0 (Recommended)
+
+See **[OAUTH_SETUP.md](OAUTH_SETUP.md)** for complete OAuth setup guide.
+
+Quick summary:
+1. Create OAuth app at https://developer.atlassian.com/console/myapps/
+2. Add callback URL: `http://localhost:8501`
+3. Get Client ID and Client Secret
+4. Add to `config.yaml` and set `enabled: true`
+
+### Using API Token (Simple Setup)
 
 1. Visit: https://id.atlassian.com/manage-profile/security/api-tokens
 2. Click **Create API token**
