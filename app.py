@@ -30,33 +30,16 @@ st.set_page_config(
     layout="wide"
 )
 
-# Hide Streamlit's default menu toolbar in the sidebar for cleaner UI
-# Keep the settings/gear icon visible at top right
+# Hide Streamlit's default pages explorer in the sidebar for cleaner UI
+# Keep logout button and other sidebar elements visible
 hide_streamlit_style = """
     <style>
-    /* Hide pages explorer - target the pages section directly */
-    [data-testid="stSidebar"] section:first-of-type {
-        display: none !important;
-        visibility: hidden !important;
-        height: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        min-height: 0 !important;
-        max-height: 0 !important;
-        overflow: hidden !important;
-    }
-    /* Alternative: hide by closest parent */
-    [data-testid="stSidebar"] > div > div:nth-child(1),
-    [data-testid="stSidebar"] nav + div {
+    /* Hide the nav element that contains page list */
+    [data-testid="stSidebar"] nav {
         display: none !important;
     }
-    /* Collapse any expandable pages section */
-    [data-testid="stSidebar"] details {
-        display: none !important;
-    }
-    /* Hide decorations and separators above branding */
-    [data-testid="stSidebar"] .stExpander,
-    [data-testid="stSidebar"] > div > div:nth-child(-n+2) {
+    /* Hide the elements after nav that are part of pages explorer */
+    [data-testid="stSidebar"] nav ~ * {
         display: none !important;
     }
     </style>
