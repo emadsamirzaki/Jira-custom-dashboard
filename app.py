@@ -202,6 +202,7 @@ def render_user_menu_top_right():
                 st.session_state.user_info = None
                 st.session_state.current_page = 'Home'
                 st.session_state.selected_component = None
+                st.session_state.oauth_code_processed = False  # Reset for next login
                 st.rerun()
 
 
@@ -221,6 +222,8 @@ def main():
     # Initialize session state
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
+    if 'oauth_code_processed' not in st.session_state:
+        st.session_state.oauth_code_processed = False
     
     # Check if OAuth is enabled
     oauth_enabled = oauth_config.get('enabled', False)
@@ -228,23 +231,26 @@ def main():
     # Handle OAuth callback if present
     query_params = get_query_params()
     
-    # If already authenticated but URL still has code param, clean the URL
+    # If already authenticated but URL still has code param, immediately redirect to clean URL
     if oauth_enabled and st.session_state.authenticated and 'code' in query_params:
-        logger.info("Already authenticated with lingering code param - cleaning URL")
-        try:
-            st.query_params.clear()
-        except:
-            pass
-        # Clean browser URL
+        logger.info("Already authenticated with code in URL - redirecting to clean URL")
+        
+        # Use JavaScript to redirect to clean URL
         st.markdown("""
             <script>
-            window.history.replaceState({}, document.title, window.location.pathname);
+            window.location.replace(window.location.pathname);
             </script>
         """, unsafe_allow_html=True)
+        
+        # Also try Streamlit's redirect
+        st.stop()
+        return
     
     # Handle OAuth callback if present AND not already authenticated
     if oauth_enabled and not st.session_state.authenticated and 'code' in query_params:
-        handle_oauth_callback(oauth_config, jira_config)
+        if not st.session_state.oauth_code_processed:
+            handle_oauth_callback(oauth_config, jira_config)
+            st.session_state.oauth_code_processed = True
     
     # Redirect to login if OAuth enabled and not authenticated
     if oauth_enabled and not st.session_state.authenticated:
