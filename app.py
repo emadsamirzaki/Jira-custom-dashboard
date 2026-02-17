@@ -34,23 +34,33 @@ hide_streamlit_style = """
     <style>
     /* Hide the top toolbar and user menu */
     [data-testid="stToolbar"] {
-        display: none;
+        display: none !important;
     }
     /* Hide the deploy button and main menu */
     #MainMenu {
-        display: none;
+        display: none !important;
     }
-    /* Hide the stSidebar header with file explorer */
-    [data-testid="stSidebar"] > div > div:first-child {
-        display: none;
+    /* Hide pages explorer section in multi-page app */
+    [data-testid="stSidebar"] [data-testid="stSidebarNav"] {
+        display: none !important;
     }
-    /* Hide page explorer and app structure */
-    .stSidebar [data-testid="stSidebarNav"] {
-        display: none;
+    /* Alternative: hide any navigation list in sidebar */
+    [data-testid="stSidebar"] nav,
+    [data-testid="stSidebar"] ul {
+        display: none !important;
     }
-    /* Alternative selector for page explorer */
-    .stSidebar nav {
-        display: none;
+    /* Hide collapsible pages section */
+    .stSidebar [role="navigation"],
+    .stSidebar details,
+    .stSidebar summary {
+        display: none !important;
+    }
+    /* Hide the entire pages explorer container */
+    [data-testid="stSidebar"] > div:first-child > div:first-child {
+        visibility: hidden !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     </style>
 """
