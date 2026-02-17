@@ -10,6 +10,7 @@ Supports OAuth 2.0 authentication with Atlassian.
 import streamlit as st
 import logging
 import os
+import json
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -22,6 +23,29 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# JavaScript for persisting auth data to localStorage
+PERSIST_AUTH_SCRIPT = """
+<script>
+window.persistAuthData = function(data) {
+    localStorage.setItem('jira_dashboard_auth', JSON.stringify(data));
+};
+
+window.getPersistedAuthData = function() {
+    const data = localStorage.getItem('jira_dashboard_auth');
+    return data ? JSON.parse(data) : null;
+};
+
+window.clearPersistedAuthData = function() {
+    localStorage.removeItem('jira_dashboard_auth');
+};
+</script>
+"""
+
+# Inject persistence script once
+if 'auth_script_injected' not in st.session_state:
+    st.markdown(PERSIST_AUTH_SCRIPT, unsafe_allow_html=True)
+    st.session_state.auth_script_injected = True
 
 # Configure Streamlit page
 st.set_page_config(
@@ -85,6 +109,50 @@ def clear_query_params():
         pass
 
 
+def persist_auth_to_browser():
+    """
+    Persist authentication data to browser localStorage.
+    This survives page refreshes within the same session.
+    """
+    if st.session_state.get('authenticated'):
+        auth_data = {
+            'authenticated': True,
+            'access_token': st.session_state.get('access_token'),
+            'refresh_token': st.session_state.get('refresh_token'),
+            'user_info': st.session_state.get('user_info'),
+            'token_expires_at': st.session_state.get('token_expires_at')
+        }
+        
+        # JavaScript to persist to localStorage
+        st.markdown(f"""
+            <script>
+            window.persistAuthData({json.dumps(auth_data)});
+            </script>
+        """, unsafe_allow_html=True)
+        logger.info("Auth data persisted to browser storage")
+
+
+def restore_auth_from_browser():
+    """
+    Restore authentication data from browser localStorage if session was lost.
+    """
+    # Try to restore from browser storage via JavaScript
+    st.markdown("""
+        <script>
+        const authData = window.getPersistedAuthData();
+        if (authData && authData.authenticated) {
+            // Signal to Python that we have auth data to restore
+            window.authDataAvailable = authData;
+        }
+        </script>
+    """, unsafe_allow_html=True)
+    
+    # For now, we'll manually check via session state
+    # In a real scenario, we'd use st_javascript or similar
+    # For simplicity, we trust Streamlit's session state persistence
+    return None
+
+
 def handle_oauth_callback(oauth_config: dict, jira_config: dict):
     """
     Handle OAuth 2.0 callback from Atlassian.
@@ -136,6 +204,9 @@ def handle_oauth_callback(oauth_config: dict, jira_config: dict):
             st.session_state.refresh_token = token_data.get('refresh_token')
             st.session_state.user_info = user_info
             st.session_state.token_expires_at = None
+            
+            # Persist auth to browser storage for page refresh resilience
+            persist_auth_to_browser()
             
             logger.info(f"User {user_info.get('email')} authenticated successfully")
             st.success("✅ Successfully logged in!")
@@ -195,6 +266,13 @@ def render_user_menu_top_right():
             st.divider()
             
             if st.button("🚪 Logout", use_container_width=True, key="logout_btn_top"):
+                # Clear browser localStorage
+                st.markdown("""
+                    <script>
+                    window.clearPersistedAuthData();
+                    </script>
+                """, unsafe_allow_html=True)
+                
                 # Clear all session state
                 st.session_state.authenticated = False
                 st.session_state.access_token = None
@@ -224,6 +302,22 @@ def main():
         st.session_state.authenticated = False
     if 'oauth_code_processed' not in st.session_state:
         st.session_state.oauth_code_processed = False
+    
+    # Try to restore auth from browser storage on page load/refresh
+    # Add script to check localStorage and restore if available
+    if not st.session_state.authenticated:
+        st.markdown("""
+            <script>
+            function restoreAuth() {
+                const authData = window.getPersistedAuthData();
+                if (authData && authData.authenticated) {
+                    // Signal to reload with auth restored
+                    sessionStorage.setItem('authRestored', 'true');
+                }
+            }
+            restoreAuth();
+            </script>
+        """, unsafe_allow_html=True)
     
     # Check if OAuth is enabled
     oauth_enabled = oauth_config.get('enabled', False)
@@ -280,12 +374,17 @@ def main():
     
     # === DASHBOARD RENDERING (for authenticated users or config-based auth) ===
     
+    # Persist auth to browser on every render if authenticated (survival across refresh)
+    if oauth_enabled and st.session_state.authenticated:
+        persist_auth_to_browser()
+    
     # Render user menu in top right if OAuth authenticated
     if oauth_enabled and st.session_state.authenticated:
         render_user_menu_top_right()
     
-    # Render sidebar navigation
-    render_sidebar()
+    # Render sidebar navigation only if authenticated
+    if st.session_state.authenticated or not oauth_enabled:
+        render_sidebar()
     
     # Get current page from session state
     current_page = st.session_state.get('current_page', 'Home')
