@@ -147,9 +147,36 @@ def handle_oauth_callback(oauth_config: dict, jira_config: dict):
         st.error(f"❌ Unexpected error during authentication: {error_msg}")
 
 
-def render_logout_button():
-    """Render logout button in sidebar."""
-    if st.sidebar.button("🚪 Logout", key="logout_button"):
+def render_user_menu():
+    """Render compact user menu with logout option in sidebar (like Jira)."""
+    user_info = st.session_state.get('user_info', {})
+    
+    if not user_info:
+        return
+    
+    name = user_info.get('name', 'User')
+    email = user_info.get('email', 'N/A')
+    picture = user_info.get('picture')
+    
+    # Create a compact menu using a column layout
+    st.sidebar.divider()
+    
+    # Use columns for compact layout
+    col1, col2 = st.sidebar.columns([1, 4])
+    
+    with col1:
+        # Display avatar
+        if picture:
+            st.image(picture, width=40)
+        else:
+            st.markdown("👤")
+    
+    with col2:
+        st.markdown(f"**{name}**")
+        st.caption(email)
+    
+    # Logout button in a compact form
+    if st.sidebar.button("🚪 Logout", use_container_width=True, key="logout_btn"):
         # Clear all session state
         st.session_state.authenticated = False
         st.session_state.access_token = None
@@ -160,24 +187,14 @@ def render_logout_button():
         st.rerun()
 
 
+def render_logout_button():
+    """Legacy function - consolidated into render_user_menu()."""
+    pass
+
+
 def render_user_info_sidebar():
-    """Render user information and avatar in sidebar."""
-    user_info = st.session_state.get('user_info', {})
-    
-    if user_info:
-        st.sidebar.divider()
-        st.sidebar.markdown("### 👤 User Info")
-        
-        # Display user name
-        name = user_info.get('name', 'User')
-        email = user_info.get('email', 'N/A')
-        
-        st.sidebar.markdown(f"**{name}**")
-        st.sidebar.caption(email)
-        
-        # Display avatar if available
-        if user_info.get('picture'):
-            st.sidebar.image(user_info.get('picture'), width=50)
+    """Legacy function - consolidated into render_user_menu()."""
+    pass
 
 
 def main():
@@ -232,10 +249,9 @@ def main():
     # Render sidebar navigation
     render_sidebar()
     
-    # Render user info if OAuth authenticated
+    # Render compact user menu if OAuth authenticated
     if oauth_enabled and st.session_state.authenticated:
-        render_user_info_sidebar()
-        render_logout_button()
+        render_user_menu()
     
     # Get current page from session state
     current_page = st.session_state.get('current_page', 'Home')
