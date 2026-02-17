@@ -238,12 +238,11 @@ def main():
         # Use JavaScript to redirect to clean URL
         st.markdown("""
             <script>
-            window.location.replace(window.location.pathname);
+            if (window.location.search) {
+                window.location.replace(window.location.pathname);
+            }
             </script>
         """, unsafe_allow_html=True)
-        
-        # Also try Streamlit's redirect
-        st.stop()
         return
     
     # Handle OAuth callback if present AND not already authenticated
