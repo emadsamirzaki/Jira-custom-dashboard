@@ -33,10 +33,6 @@ st.set_page_config(
 # Keep the settings/gear icon visible at top right
 hide_streamlit_style = """
     <style>
-    /* Hide main menu */
-    #MainMenu {
-        display: none !important;
-    }
     /* Hide pages explorer - target the pages section directly */
     [data-testid="stSidebar"] section:first-of-type {
         display: none !important;
