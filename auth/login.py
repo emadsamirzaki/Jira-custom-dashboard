@@ -13,13 +13,6 @@ def render_login_page(oauth_config: dict, jira_config: dict):
         oauth_config: OAuth configuration from config.yaml
         jira_config: Jira configuration from config.yaml
     """
-    # Set page to centered, wide layout
-    st.set_page_config(
-        page_title="Jira Dashboard | Login",
-        page_icon="📊",
-        layout="wide"
-    )
-    
     # Display branded header
     display_branded_header("Login")
     
