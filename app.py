@@ -464,6 +464,14 @@ def main():
     
     # Redirect to login if OAuth enabled and not authenticated
     if oauth_enabled and not st.session_state.authenticated:
+        # Explicitly hide sidebar during login
+        st.markdown("""
+            <style>
+            [data-testid="stSidebar"] {
+                display: none !important;
+            }
+            </style>
+        """, unsafe_allow_html=True)
         render_login_page(oauth_config, jira_config)
         return
     
@@ -499,9 +507,21 @@ def main():
     if oauth_enabled and st.session_state.authenticated:
         render_user_menu_top_right()
     
-    # Render sidebar navigation only if authenticated
-    if st.session_state.authenticated or not oauth_enabled:
+    # Render sidebar ONLY when fully authenticated or when OAuth is disabled 
+    # This prevents sidebar from appearing on login page
+    render_sidebar_here = False
+    if oauth_enabled:
+        # Only render if OAuth is enabled AND user is authenticated
+        render_sidebar_here = st.session_state.get('authenticated', False)
+    else:
+        # If OAuth is not enabled, always render sidebar (config-based auth)
+        render_sidebar_here = True
+    
+    if render_sidebar_here:
         render_sidebar()
+        logger.debug("Sidebar rendered")
+    else:
+        logger.debug("Sidebar hidden (not authenticated)")
     
     # Get current page from session state
     current_page = st.session_state.get('current_page', 'Home')
