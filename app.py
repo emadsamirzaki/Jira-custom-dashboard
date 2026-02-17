@@ -11,6 +11,9 @@ import streamlit as st
 import logging
 import os
 import json
+import uuid
+import tempfile
+from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -24,20 +27,110 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# JavaScript for persisting auth data to localStorage
+# Session storage directory for persisting auth across page refreshes
+SESSION_DIR = Path(tempfile.gettempdir()) / "streamlit_sessions"
+SESSION_DIR.mkdir(exist_ok=True)
+
+def get_session_file(session_id: str) -> Path:
+    """Get path to session file for given session ID."""
+    return SESSION_DIR / f"session_{session_id}.json"
+
+def save_session(session_id: str, auth_data: dict):
+    """Save authentication session to file."""
+    try:
+        session_file = get_session_file(session_id)
+        with open(session_file, 'w') as f:
+            json.dump(auth_data, f)
+        logger.debug(f"Session saved: {session_id}")
+    except Exception as e:
+        logger.error(f"Error saving session: {e}")
+
+def load_session(session_id: str) -> dict:
+    """Load authentication session from file."""
+    try:
+        session_file = get_session_file(session_id)
+        if session_file.exists():
+            with open(session_file, 'r') as f:
+                data = json.load(f)
+            logger.debug(f"Session loaded: {session_id}")
+            return data
+    except Exception as e:
+        logger.error(f"Error loading session: {e}")
+    return None
+
+def delete_session(session_id: str):
+    """Delete authentication session file."""
+    try:
+        session_file = get_session_file(session_id)
+        if session_file.exists():
+            session_file.unlink()
+        logger.debug(f"Session deleted: {session_id}")
+    except Exception as e:
+        logger.error(f"Error deleting session: {e}")
+
+def create_session_id() -> str:
+    """Generate a new session ID."""
+    return str(uuid.uuid4())
+
+# JavaScript for persisting auth data to cookies and checking restoration
 PERSIST_AUTH_SCRIPT = """
 <script>
+// Set cookie helper
+function setCookie(name, value, days = 30) {
+    const d = new Date();
+    d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = "expires=" + d.toUTCString();
+    document.cookie = name + "=" + encodeURIComponent(value) + ";" + expires + ";path=/;SameSite=Lax";
+}
+
+// Get cookie helper
+function getCookie(name) {
+    const nameEQ = name + "=";
+    const cookies = document.cookie.split(';');
+    for(let i = 0; i < cookies.length; i++) {
+        let cookie = cookies[i].trim();
+        if (cookie.indexOf(nameEQ) === 0) {
+            return decodeURIComponent(cookie.substring(nameEQ.length));
+        }
+    }
+    return null;
+}
+
+// Delete cookie helper
+function deleteCookie(name) {
+    setCookie(name, "", -1);
+}
+
 window.persistAuthData = function(data) {
-    localStorage.setItem('jira_dashboard_auth', JSON.stringify(data));
+    try {
+        setCookie('jira_auth_token', data.access_token || '', 30);
+        setCookie('jira_auth_user', JSON.stringify(data.user_info || {}), 30);
+        setCookie('jira_auth_session', 'active', 30);
+    } catch(e) {
+        console.error('Error persisting auth:', e);
+    }
 };
 
 window.getPersistedAuthData = function() {
-    const data = localStorage.getItem('jira_dashboard_auth');
-    return data ? JSON.parse(data) : null;
+    try {
+        const token = getCookie('jira_auth_token');
+        const user = getCookie('jira_auth_user');
+        if (token && getCookie('jira_auth_session') === 'active') {
+            return {
+                access_token: token,
+                user_info: user ? JSON.parse(user) : {}
+            };
+        }
+    } catch(e) {
+        console.error('Error restoring auth:', e);
+    }
+    return null;
 };
 
 window.clearPersistedAuthData = function() {
-    localStorage.removeItem('jira_dashboard_auth');
+    deleteCookie('jira_auth_token');
+    deleteCookie('jira_auth_user');
+    deleteCookie('jira_auth_session');
 };
 </script>
 """
@@ -111,10 +204,17 @@ def clear_query_params():
 
 def persist_auth_to_browser():
     """
-    Persist authentication data to browser localStorage.
+    Persist authentication data to browser localStorage and file.
     This survives page refreshes within the same session.
     """
     if st.session_state.get('authenticated'):
+        # Create or reuse session ID
+        if not st.session_state.get('session_id'):
+            st.session_state.session_id = create_session_id()
+            
+        session_id = st.session_state.session_id
+        
+        # Save auth data to file for recovery on refresh
         auth_data = {
             'authenticated': True,
             'access_token': st.session_state.get('access_token'),
@@ -123,13 +223,22 @@ def persist_auth_to_browser():
             'token_expires_at': st.session_state.get('token_expires_at')
         }
         
-        # JavaScript to persist to localStorage
+        save_session(session_id, auth_data)
+        
+        # Add session ID to query params
+        try:
+            if 'session_id' not in get_query_params():
+                st.query_params['session_id'] = session_id
+        except:
+            pass
+        
+        # JavaScript to persist to browser cookies
         st.markdown(f"""
             <script>
             window.persistAuthData({json.dumps(auth_data)});
             </script>
         """, unsafe_allow_html=True)
-        logger.info("Auth data persisted to browser storage")
+        logger.info(f"Auth data persisted - Session: {session_id}")
 
 
 def restore_auth_from_browser():
@@ -266,6 +375,10 @@ def render_user_menu_top_right():
             st.divider()
             
             if st.button("🚪 Logout", use_container_width=True, key="logout_btn_top"):
+                # Delete session file
+                if st.session_state.get('session_id'):
+                    delete_session(st.session_state.session_id)
+                
                 # Clear browser localStorage
                 st.markdown("""
                     <script>
@@ -281,6 +394,7 @@ def render_user_menu_top_right():
                 st.session_state.current_page = 'Home'
                 st.session_state.selected_component = None
                 st.session_state.oauth_code_processed = False  # Reset for next login
+                st.session_state.session_id = None
                 st.rerun()
 
 
@@ -297,27 +411,30 @@ def main():
     oauth_config = config.get('oauth', {})
     jira_config = config.get('jira', {})
     
-    # Initialize session state
+    # Get query parameters
+    query_params = get_query_params()
+    
+    # Initialize session state with defaults
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
     if 'oauth_code_processed' not in st.session_state:
         st.session_state.oauth_code_processed = False
+    if 'session_id' not in st.session_state:
+        st.session_state.session_id = None
     
-    # Try to restore auth from browser storage on page load/refresh
-    # Add script to check localStorage and restore if available
-    if not st.session_state.authenticated:
-        st.markdown("""
-            <script>
-            function restoreAuth() {
-                const authData = window.getPersistedAuthData();
-                if (authData && authData.authenticated) {
-                    // Signal to reload with auth restored
-                    sessionStorage.setItem('authRestored', 'true');
-                }
-            }
-            restoreAuth();
-            </script>
-        """, unsafe_allow_html=True)
+    # Try to restore from file-based session if we see session_id in query params
+    if 'session_id' in query_params and not st.session_state.authenticated:
+        session_id = query_params['session_id']
+        session_data = load_session(session_id)
+        
+        if session_data:
+            logger.info(f"Restoring session from file: {session_id}")
+            st.session_state.authenticated = session_data.get('authenticated', False)
+            st.session_state.access_token = session_data.get('access_token')
+            st.session_state.refresh_token = session_data.get('refresh_token')
+            st.session_state.user_info = session_data.get('user_info')
+            st.session_state.token_expires_at = session_data.get('token_expires_at')
+            st.session_state.session_id = session_id
     
     # Check if OAuth is enabled
     oauth_enabled = oauth_config.get('enabled', False)
