@@ -94,19 +94,25 @@ def handle_oauth_callback(oauth_config: dict, jira_config: dict):
     query_params = get_query_params()
     
     if 'code' not in query_params:
+        logger.info("No auth code in query params")
         return False
     
     auth_code = query_params['code']
+    logger.info(f"Received auth code: {auth_code[:20]}...")
     
     try:
         # Show loading spinner
         with st.spinner("Authenticating with Atlassian..."):
+            logger.info("Starting token exchange...")
             # Exchange auth code for access token
             token_data = exchange_code_for_token(auth_code, oauth_config)
+            logger.info("Token exchange successful")
             
             # Get user information
             access_token = token_data.get('access_token')
+            logger.info("Exchanging token for user info...")
             user_info = get_user_info(access_token, oauth_config)
+            logger.info(f"User info retrieved: {user_info}")
             
             # Validate user belongs to workspace
             is_valid, validation_msg = validate_user_belongs_to_workspace(
@@ -118,7 +124,7 @@ def handle_oauth_callback(oauth_config: dict, jira_config: dict):
                 st.error("Access restricted to wkengineering Jira users only")
                 st.stop()
             
-            # Store auth data in session state
+            # Store auth data in session state BEFORE clearing query params
             st.session_state.authenticated = True
             st.session_state.access_token = access_token
             st.session_state.refresh_token = token_data.get('refresh_token')
@@ -126,17 +132,19 @@ def handle_oauth_callback(oauth_config: dict, jira_config: dict):
             st.session_state.token_expires_at = None  # Implement expiry tracking if needed
             
             logger.info(f"User {user_info.get('email')} authenticated successfully")
+            st.success("✅ Successfully logged in!")
             
-        # Clear query params to prevent reprocessing
-        clear_query_params()
-        st.rerun()
-        
+            # NOW clear query params after authentication is complete
+            clear_query_params()
+            
     except JiraOAuthError as e:
-        st.error(f"❌ Authentication Error: {str(e)}")
-        logger.error(f"OAuth callback error: {str(e)}")
+        error_msg = str(e)
+        logger.error(f"OAuth callback error: {error_msg}")
+        st.error(f"❌ Authentication Error: {error_msg}")
     except Exception as e:
-        st.error(f"❌ Unexpected error during authentication: {str(e)}")
-        logger.error(f"Unexpected error in OAuth callback: {str(e)}")
+        error_msg = str(e)
+        logger.error(f"Unexpected error in OAuth callback: {error_msg}")
+        st.error(f"❌ Unexpected error during authentication: {error_msg}")
 
 
 def render_logout_button():
