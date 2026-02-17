@@ -13,6 +13,15 @@ def render_login_page(oauth_config: dict, jira_config: dict):
         oauth_config: OAuth configuration from config.yaml
         jira_config: Jira configuration from config.yaml
     """
+    # Hide the sidebar completely on login page
+    st.markdown("""
+        <style>
+        [data-testid="stSidebar"] {
+            display: none !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
     # Display branded header
     display_branded_header("Login")
     
