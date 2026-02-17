@@ -64,16 +64,39 @@ from auth import (
 from auth.login import render_login_page
 
 
+# Compatibility wrapper for query_params access
+def get_query_params():
+    """Get query parameters with compatibility for different Streamlit versions."""
+    try:
+        return st.query_params
+    except AttributeError:
+        # Fallback for older Streamlit versions
+        try:
+            return st.experimental_get_query_params()
+        except:
+            return {}
+
+
+def clear_query_params():
+    """Clear query parameters with compatibility for different Streamlit versions."""
+    try:
+        st.query_params.clear()
+    except AttributeError:
+        pass
+
+
 def handle_oauth_callback(oauth_config: dict, jira_config: dict):
     """
     Handle OAuth 2.0 callback from Atlassian.
     
-    Checks st.query_params for auth code and exchanges it for token.
+    Checks query params for auth code and exchanges it for token.
     """
-    if 'code' not in st.query_params:
+    query_params = get_query_params()
+    
+    if 'code' not in query_params:
         return False
     
-    auth_code = st.query_params['code']
+    auth_code = query_params['code']
     
     try:
         # Show loading spinner
@@ -105,7 +128,7 @@ def handle_oauth_callback(oauth_config: dict, jira_config: dict):
             logger.info(f"User {user_info.get('email')} authenticated successfully")
             
         # Clear query params to prevent reprocessing
-        st.query_params.clear()
+        clear_query_params()
         st.rerun()
         
     except JiraOAuthError as e:
@@ -165,7 +188,8 @@ def main():
     oauth_enabled = oauth_config.get('enabled', False)
     
     # Handle OAuth callback if present
-    if oauth_enabled and 'code' in st.query_params:
+    query_params = get_query_params()
+    if oauth_enabled and 'code' in query_params:
         handle_oauth_callback(oauth_config, jira_config)
     
     # Redirect to login if OAuth enabled and not authenticated
