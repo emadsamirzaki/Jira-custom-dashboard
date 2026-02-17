@@ -336,17 +336,24 @@ def render_component_capability_page(jira_config, component_name):
     
         st.divider()
         
-        # Display details section for Critical & High tickets (SPRINT)
-        st.subheader("🔴 Details - Critical & High Tickets (Sprint)")
+        # Display details section for Critical & High tickets with tabs
+        st.subheader("🔴 Details - Critical & High Tickets")
         
-        with st.spinner("Fetching sprint critical/high issues..."):
-            sprint_issues = get_critical_high_issues(jira, jira_config['project_key'], component_name, sprint_id, sprint_only=True)
+        # Create tabs for Sprint and Backlog (Sprint first)
+        tab_sprint, tab_backlog = st.tabs(["🏃 Sprint", "📋 Backlog"])
         
-        if sprint_issues:
-            jira_url = jira_config['url'].rstrip('/')
+        # SPRINT DETAILS (First tab)
+        with tab_sprint:
+            st.write("**Critical and High Priority Issues in Sprint**")
             
-            # Build styled HTML table with clickable issue links
-            html_table_sprint = """<style>
+            with st.spinner("Fetching sprint critical/high issues..."):
+                sprint_issues = get_critical_high_issues(jira, jira_config['project_key'], component_name, sprint_id, sprint_only=True)
+            
+            if sprint_issues:
+                jira_url = jira_config['url'].rstrip('/')
+                
+                # Build styled HTML table with clickable issue links
+                html_table_sprint = """<style>
 .details-table {
     width: 100%;
     border-collapse: collapse;
@@ -389,93 +396,92 @@ def render_component_capability_page(jira_config, component_name):
 <th>Target Deployment</th>
 </tr>
 """
-            
-            for issue in sprint_issues:
-                # Get fix version info
-                fix_version = 'N/A'
-                if issue.fields.fixVersions:
-                    fv = issue.fields.fixVersions[0]
-                    release_date = fv.releaseDate if hasattr(fv, 'releaseDate') and fv.releaseDate else 'N/A'
-                    fix_version = f"{fv.name} ({release_date})"
                 
-                # Get issue type
-                issue_type = issue.fields.issuetype.name if issue.fields.issuetype else 'N/A'
-                
-                # Get full summary (no truncation)
-                summary = issue.fields.summary
-                
-                # Get Parent EPIC
-                parent_epic_key = None
-                parent_epic_name = 'N/A'
-                
-                # First, check if issue has a parent field (standard Jira parent relationship)
-                if hasattr(issue.fields, 'parent') and issue.fields.parent:
-                    try:
-                        if hasattr(issue.fields.parent, 'key'):
-                            parent_epic_key = issue.fields.parent.key
-                        elif isinstance(issue.fields.parent, dict) and 'key' in issue.fields.parent:
-                            parent_epic_key = issue.fields.parent['key']
-                    except (AttributeError, KeyError, TypeError):
-                        pass
-                
-                # If no parent, try custom field Epic Link IDs
-                if not parent_epic_key:
-                    for field_id in ['customfield_10014', 'customfield_10011', 'customfield_10051']:
-                        if hasattr(issue.fields, field_id):
-                            epic_obj = getattr(issue.fields, field_id)
-                            if epic_obj:
-                                try:
-                                    # Try to access as object first
-                                    if hasattr(epic_obj, 'key'):
-                                        parent_epic_key = epic_obj.key
-                                    # Then try as dict
-                                    elif isinstance(epic_obj, dict) and 'key' in epic_obj:
-                                        parent_epic_key = epic_obj['key']
-                                    if parent_epic_key:
-                                        break
-                                except (AttributeError, KeyError, TypeError):
-                                    continue
-                
-                # If we have a parent epic key, fetch its name
-                if parent_epic_key and jira:
-                    try:
-                        parent_issue = jira.issue(parent_epic_key)
-                        parent_epic_name = parent_issue.fields.summary if parent_issue.fields.summary else parent_epic_key
-                    except Exception as e:
-                        logger.debug(f"Error fetching parent epic {parent_epic_key}: {str(e)}")
-                        parent_epic_name = parent_epic_key
+                for issue in sprint_issues:
+                    # Get fix version info
+                    fix_version = 'N/A'
+                    if issue.fields.fixVersions:
+                        fv = issue.fields.fixVersions[0]
+                        release_date = fv.releaseDate if hasattr(fv, 'releaseDate') and fv.releaseDate else 'N/A'
+                        fix_version = f"{fv.name} ({release_date})"
                     
-                    parent_epic_link = f'<a href="{jira_url}/browse/{parent_epic_key}" target="_blank">{parent_epic_name}</a>'
-                else:
-                    parent_epic_link = 'N/A'
+                    # Get issue type
+                    issue_type = issue.fields.issuetype.name if issue.fields.issuetype else 'N/A'
+                    
+                    # Get full summary (no truncation)
+                    summary = issue.fields.summary
+                    
+                    # Get Parent EPIC
+                    parent_epic_key = None
+                    parent_epic_name = 'N/A'
+                    
+                    # First, check if issue has a parent field (standard Jira parent relationship)
+                    if hasattr(issue.fields, 'parent') and issue.fields.parent:
+                        try:
+                            if hasattr(issue.fields.parent, 'key'):
+                                parent_epic_key = issue.fields.parent.key
+                            elif isinstance(issue.fields.parent, dict) and 'key' in issue.fields.parent:
+                                parent_epic_key = issue.fields.parent['key']
+                        except (AttributeError, KeyError, TypeError):
+                            pass
+                    
+                    # If no parent, try custom field Epic Link IDs
+                    if not parent_epic_key:
+                        for field_id in ['customfield_10014', 'customfield_10011', 'customfield_10051']:
+                            if hasattr(issue.fields, field_id):
+                                epic_obj = getattr(issue.fields, field_id)
+                                if epic_obj:
+                                    try:
+                                        # Try to access as object first
+                                        if hasattr(epic_obj, 'key'):
+                                            parent_epic_key = epic_obj.key
+                                        # Then try as dict
+                                        elif isinstance(epic_obj, dict) and 'key' in epic_obj:
+                                            parent_epic_key = epic_obj['key']
+                                        if parent_epic_key:
+                                            break
+                                    except (AttributeError, KeyError, TypeError):
+                                        continue
+                    
+                    # If we have a parent epic key, fetch its name
+                    if parent_epic_key and jira:
+                        try:
+                            parent_issue = jira.issue(parent_epic_key)
+                            parent_epic_name = parent_issue.fields.summary if parent_issue.fields.summary else parent_epic_key
+                        except Exception as e:
+                            logger.debug(f"Error fetching parent epic {parent_epic_key}: {str(e)}")
+                            parent_epic_name = parent_epic_key
+                        
+                        parent_epic_link = f'<a href="{jira_url}/browse/{parent_epic_key}" target="_blank">{parent_epic_name}</a>'
+                    else:
+                        parent_epic_link = 'N/A'
+                    
+                    # Create clickable issue link using HTML anchor
+                    issue_link = f'<a href="{jira_url}/browse/{issue.key}" target="_blank">{issue.key}</a>'
+                    priority = issue.fields.priority.name if issue.fields.priority else 'N/A'
+                    resolution_approach = get_resolution_approach(issue)
+                    target_completion = get_target_completion_date(issue, jira=jira, base_url=jira_url)
+                    
+                    html_table_sprint += f"<tr><td>{parent_epic_link}</td><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{resolution_approach}</td><td>{target_completion}</td><td>{fix_version}</td></tr>"
                 
-                # Create clickable issue link using HTML anchor
-                issue_link = f'<a href="{jira_url}/browse/{issue.key}" target="_blank">{issue.key}</a>'
-                priority = issue.fields.priority.name if issue.fields.priority else 'N/A'
-                resolution_approach = get_resolution_approach(issue)
-                target_completion = get_target_completion_date(issue, jira=jira, base_url=jira_url)
+                html_table_sprint += "</table>"
                 
-                html_table_sprint += f"<tr><td>{parent_epic_link}</td><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{resolution_approach}</td><td>{target_completion}</td><td>{fix_version}</td></tr>"
+                st.markdown(html_table_sprint, unsafe_allow_html=True)
+            else:
+                st.info("No critical or high priority issues found in sprint.")
+        
+        # BACKLOG DETAILS (Second tab)
+        with tab_backlog:
+            st.write("**Critical and High Priority Issues in Backlog**")
             
-            html_table_sprint += "</table>"
+            with st.spinner("Fetching backlog critical/high issues..."):
+                backlog_issues = get_critical_high_issues(jira, jira_config['project_key'], component_name, sprint_id, sprint_only=False)
             
-            st.markdown(html_table_sprint, unsafe_allow_html=True)
-        else:
-            st.info("No critical or high priority issues found in sprint.")
-        
-        st.divider()
-        
-        # Display details section for Critical & High tickets (BACKLOG)
-        st.subheader("🔴 Details - Critical & High Tickets (Backlog)")
-        
-        with st.spinner("Fetching backlog critical/high issues..."):
-            backlog_issues = get_critical_high_issues(jira, jira_config['project_key'], component_name, sprint_id, sprint_only=False)
-        
-        if backlog_issues:
-            jira_url = jira_config['url'].rstrip('/')
-            
-            # Build styled HTML table with clickable issue links
-            html_table_backlog = """<style>
+            if backlog_issues:
+                jira_url = jira_config['url'].rstrip('/')
+                
+                # Build styled HTML table with clickable issue links
+                html_table_backlog = """<style>
 .details-table {
     width: 100%;
     border-collapse: collapse;
@@ -518,74 +524,74 @@ def render_component_capability_page(jira_config, component_name):
 <th>Target Deployment</th>
 </tr>
 """
-            
-            for issue in backlog_issues:
-                # Get fix version info
-                fix_version = 'N/A'
-                if issue.fields.fixVersions:
-                    fv = issue.fields.fixVersions[0]
-                    release_date = fv.releaseDate if hasattr(fv, 'releaseDate') and fv.releaseDate else 'N/A'
-                    fix_version = f"{fv.name} ({release_date})"
                 
-                # Get issue type
-                issue_type = issue.fields.issuetype.name if issue.fields.issuetype else 'N/A'
-                
-                # Get full summary (no truncation)
-                summary = issue.fields.summary
-                
-                # Get Parent EPIC (similar logic as above)
-                parent_epic_key = None
-                parent_epic_name = 'N/A'
-                
-                if hasattr(issue.fields, 'parent') and issue.fields.parent:
-                    try:
-                        if hasattr(issue.fields.parent, 'key'):
-                            parent_epic_key = issue.fields.parent.key
-                        elif isinstance(issue.fields.parent, dict) and 'key' in issue.fields.parent:
-                            parent_epic_key = issue.fields.parent['key']
-                    except (AttributeError, KeyError, TypeError):
-                        pass
-                
-                if not parent_epic_key:
-                    for field_id in ['customfield_10014', 'customfield_10011', 'customfield_10051']:
-                        if hasattr(issue.fields, field_id):
-                            epic_obj = getattr(issue.fields, field_id)
-                            if epic_obj:
-                                try:
-                                    if hasattr(epic_obj, 'key'):
-                                        parent_epic_key = epic_obj.key
-                                    elif isinstance(epic_obj, dict) and 'key' in epic_obj:
-                                        parent_epic_key = epic_obj['key']
-                                    if parent_epic_key:
-                                        break
-                                except (AttributeError, KeyError, TypeError):
-                                    continue
-                
-                if parent_epic_key and jira:
-                    try:
-                        parent_issue = jira.issue(parent_epic_key)
-                        parent_epic_name = parent_issue.fields.summary if parent_issue.fields.summary else parent_epic_key
-                    except Exception as e:
-                        logger.debug(f"Error fetching parent epic {parent_epic_key}: {str(e)}")
-                        parent_epic_name = parent_epic_key
+                for issue in backlog_issues:
+                    # Get fix version info
+                    fix_version = 'N/A'
+                    if issue.fields.fixVersions:
+                        fv = issue.fields.fixVersions[0]
+                        release_date = fv.releaseDate if hasattr(fv, 'releaseDate') and fv.releaseDate else 'N/A'
+                        fix_version = f"{fv.name} ({release_date})"
                     
-                    parent_epic_link = f'<a href="{jira_url}/browse/{parent_epic_key}" target="_blank">{parent_epic_name}</a>'
-                else:
-                    parent_epic_link = 'N/A'
+                    # Get issue type
+                    issue_type = issue.fields.issuetype.name if issue.fields.issuetype else 'N/A'
+                    
+                    # Get full summary (no truncation)
+                    summary = issue.fields.summary
+                    
+                    # Get Parent EPIC (similar logic as above)
+                    parent_epic_key = None
+                    parent_epic_name = 'N/A'
+                    
+                    if hasattr(issue.fields, 'parent') and issue.fields.parent:
+                        try:
+                            if hasattr(issue.fields.parent, 'key'):
+                                parent_epic_key = issue.fields.parent.key
+                            elif isinstance(issue.fields.parent, dict) and 'key' in issue.fields.parent:
+                                parent_epic_key = issue.fields.parent['key']
+                        except (AttributeError, KeyError, TypeError):
+                            pass
+                    
+                    if not parent_epic_key:
+                        for field_id in ['customfield_10014', 'customfield_10011', 'customfield_10051']:
+                            if hasattr(issue.fields, field_id):
+                                epic_obj = getattr(issue.fields, field_id)
+                                if epic_obj:
+                                    try:
+                                        if hasattr(epic_obj, 'key'):
+                                            parent_epic_key = epic_obj.key
+                                        elif isinstance(epic_obj, dict) and 'key' in epic_obj:
+                                            parent_epic_key = epic_obj['key']
+                                        if parent_epic_key:
+                                            break
+                                    except (AttributeError, KeyError, TypeError):
+                                        continue
+                    
+                    if parent_epic_key and jira:
+                        try:
+                            parent_issue = jira.issue(parent_epic_key)
+                            parent_epic_name = parent_issue.fields.summary if parent_issue.fields.summary else parent_epic_key
+                        except Exception as e:
+                            logger.debug(f"Error fetching parent epic {parent_epic_key}: {str(e)}")
+                            parent_epic_name = parent_epic_key
+                        
+                        parent_epic_link = f'<a href="{jira_url}/browse/{parent_epic_key}" target="_blank">{parent_epic_name}</a>'
+                    else:
+                        parent_epic_link = 'N/A'
+                    
+                    # Create clickable issue link
+                    issue_link = f'<a href="{jira_url}/browse/{issue.key}" target="_blank">{issue.key}</a>'
+                    priority = issue.fields.priority.name if issue.fields.priority else 'N/A'
+                    resolution_approach = get_resolution_approach(issue)
+                    target_completion = get_target_completion_date(issue, jira=jira, base_url=jira_url)
+                    
+                    html_table_backlog += f"<tr><td>{parent_epic_link}</td><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{resolution_approach}</td><td>{target_completion}</td><td>{fix_version}</td></tr>"
                 
-                # Create clickable issue link
-                issue_link = f'<a href="{jira_url}/browse/{issue.key}" target="_blank">{issue.key}</a>'
-                priority = issue.fields.priority.name if issue.fields.priority else 'N/A'
-                resolution_approach = get_resolution_approach(issue)
-                target_completion = get_target_completion_date(issue, jira=jira, base_url=jira_url)
+                html_table_backlog += "</table>"
                 
-                html_table_backlog += f"<tr><td>{parent_epic_link}</td><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{resolution_approach}</td><td>{target_completion}</td><td>{fix_version}</td></tr>"
-            
-            html_table_backlog += "</table>"
-            
-            st.markdown(html_table_backlog, unsafe_allow_html=True)
-        else:
-            st.info("No critical or high priority issues found in backlog.")
+                st.markdown(html_table_backlog, unsafe_allow_html=True)
+            else:
+                st.info("No critical or high priority issues found in backlog.")
         
         st.divider()
         
