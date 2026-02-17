@@ -16,10 +16,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configure logging
-log_level = os.getenv('LOG_LEVEL', 'WARNING')
+log_level = os.getenv('LOG_LEVEL', 'INFO')  # Changed to INFO for debugging
 logging.basicConfig(
-    level=getattr(logging, log_level, logging.WARNING),
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=getattr(logging, log_level, logging.INFO),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 

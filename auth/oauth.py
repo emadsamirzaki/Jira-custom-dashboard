@@ -111,21 +111,34 @@ def get_user_info(access_token: str, oauth_config: Dict) -> Dict:
         }
         
         resource_url = oauth_config['resource_url']
+        logger.info(f"Requesting user info from: {resource_url}")
+        
         response = requests.get(resource_url, headers=headers, timeout=10)
+        
+        # Log response status and content
+        logger.info(f"User info response status: {response.status_code}")
+        logger.debug(f"User info response: {response.text}")
+        
         response.raise_for_status()
         
         user_info = response.json()
-        logger.info(f"Successfully retrieved user info for {user_info.get('email')}")
+        
+        # Atlassian /me endpoint returns: account_id, email, name, picture
+        logger.info(f"Successfully retrieved user info: {user_info}")
+        
         return user_info
         
     except requests.exceptions.Timeout:
+        logger.error("User info request timeout")
         raise JiraOAuthError("Unable to fetch user info - connection timeout")
     except requests.exceptions.HTTPError as e:
-        logger.error(f"Failed to get user info: {e}")
-        raise JiraOAuthError("Failed to retrieve user information")
+        error_msg = f"HTTP {response.status_code}: {response.text}"
+        logger.error(f"Failed to get user info: {error_msg}")
+        raise JiraOAuthError(f"Failed to retrieve user information: {error_msg}")
     except Exception as e:
-        logger.error(f"Unexpected error getting user info: {str(e)}")
-        raise JiraOAuthError(f"Failed to retrieve user information: {str(e)}")
+        error_msg = str(e)
+        logger.error(f"Unexpected error getting user info: {error_msg}")
+        raise JiraOAuthError(f"Failed to retrieve user information: {error_msg}")
 
 
 def validate_user_belongs_to_workspace(
