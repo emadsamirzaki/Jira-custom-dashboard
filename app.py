@@ -2352,8 +2352,8 @@ def main():
                     # Get issue type
                     issue_type = issue.fields.issuetype.name if issue.fields.issuetype else 'N/A'
                     
-                    # Format summary (truncate if too long)
-                    summary = issue.fields.summary[:50] + ('...' if len(issue.fields.summary) > 50 else '')
+                    # Display full summary
+                    summary = issue.fields.summary
                     
                     # Create clickable issue link using HTML anchor
                     issue_link = f'<a href="{jira_url}/browse/{issue.key}" target="_blank">{issue.key}</a>'
