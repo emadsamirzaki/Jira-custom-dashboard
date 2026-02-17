@@ -32,35 +32,38 @@ st.set_page_config(
 # Hide Streamlit's default menu toolbar in the sidebar for cleaner UI
 hide_streamlit_style = """
     <style>
-    /* Hide the top toolbar and user menu */
+    /* Hide the top toolbar */
     [data-testid="stToolbar"] {
         display: none !important;
     }
-    /* Hide the deploy button and main menu */
+    /* Hide main menu */
     #MainMenu {
         display: none !important;
     }
-    /* Hide pages explorer section in multi-page app */
-    [data-testid="stSidebar"] [data-testid="stSidebarNav"] {
+    /* Hide pages explorer - target the pages section directly */
+    [data-testid="stSidebar"] section:first-of-type {
         display: none !important;
-    }
-    /* Alternative: hide any navigation list in sidebar */
-    [data-testid="stSidebar"] nav,
-    [data-testid="stSidebar"] ul {
-        display: none !important;
-    }
-    /* Hide collapsible pages section */
-    .stSidebar [role="navigation"],
-    .stSidebar details,
-    .stSidebar summary {
-        display: none !important;
-    }
-    /* Hide the entire pages explorer container */
-    [data-testid="stSidebar"] > div:first-child > div:first-child {
         visibility: hidden !important;
         height: 0 !important;
         margin: 0 !important;
         padding: 0 !important;
+        min-height: 0 !important;
+        max-height: 0 !important;
+        overflow: hidden !important;
+    }
+    /* Alternative: hide by closest parent */
+    [data-testid="stSidebar"] > div > div:nth-child(1),
+    [data-testid="stSidebar"] nav + div {
+        display: none !important;
+    }
+    /* Collapse any expandable pages section */
+    [data-testid="stSidebar"] details {
+        display: none !important;
+    }
+    /* Hide decorations and separators above branding */
+    [data-testid="stSidebar"] .stExpander,
+    [data-testid="stSidebar"] > div > div:nth-child(-n+2) {
+        display: none !important;
     }
     </style>
 """
