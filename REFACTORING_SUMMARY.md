@@ -22,7 +22,7 @@ project/
 │   ├── __init__.py
 │   └── loader.py                   # Configuration loading
 │
-├── jira/
+├── jira_integration/
 │   ├── __init__.py
 │   ├── client.py                   # Jira connection & validation
 │   ├── queries.py                  # All Jira data queries
@@ -220,9 +220,9 @@ Simply add new functions to the appropriate module without affecting others!
 
 | Task | File |
 |------|------|
-| Fix Jira connection issues | `jira/client.py` |
-| Add new Jira query | `jira/queries.py` |
-| Add data processing | `jira/data_processor.py` |
+| Fix Jira connection issues | `jira_integration/client.py` |
+| Add new Jira query | `jira_integration/queries.py` |
+| Add data processing | `jira_integration/data_processor.py` |
 | Modify UI styling | `ui/branding.py` |
 | Add new page | Create `pages/my_page.py` |
 | Update navigation | `components/sidebar.py` |

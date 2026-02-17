@@ -5,12 +5,12 @@ import pandas as pd
 from datetime import datetime, timedelta
 import logging
 
-from jira.client import get_jira_connection, validate_jira_connection
-from jira.queries import (
+from jira_integration.client import get_jira_connection, validate_jira_connection
+from jira_integration.queries import (
     get_project_info, get_active_sprint, get_components_issues_count,
     get_release_versions
 )
-from jira.data_processor import is_date_past
+from jira_integration.data_processor import is_date_past
 from ui.utils import display_refresh_button
 
 logger = logging.getLogger(__name__)

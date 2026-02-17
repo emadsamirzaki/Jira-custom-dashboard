@@ -3,8 +3,8 @@
 import streamlit as st
 from datetime import datetime
 from config.loader import load_config
-from jira.client import get_jira_connection
-from jira.queries import get_project_components
+from jira_integration.client import get_jira_connection
+from jira_integration.queries import get_project_components
 from ui.branding import display_sidebar_branding
 
 

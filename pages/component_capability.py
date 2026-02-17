@@ -3,13 +3,13 @@
 import streamlit as st
 import logging
 
-from jira.client import get_jira_connection, validate_jira_connection
-from jira.queries import (
+from jira_integration.client import get_jira_connection, validate_jira_connection
+from jira_integration.queries import (
     get_active_sprint, get_component_capability_status,
     get_component_capability_status_historical, get_critical_high_issues,
     get_flagged_issues
 )
-from jira.data_processor import (
+from jira_integration.data_processor import (
     get_target_completion_date, get_resolution_approach, get_flagged_comment
 )
 from ui.utils import display_refresh_button

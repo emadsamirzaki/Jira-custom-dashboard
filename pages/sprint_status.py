@@ -3,8 +3,8 @@
 import streamlit as st
 import logging
 
-from jira.client import get_jira_connection, validate_jira_connection
-from jira.queries import get_active_sprint, get_component_details
+from jira_integration.client import get_jira_connection, validate_jira_connection
+from jira_integration.queries import get_active_sprint, get_component_details
 from ui.utils import display_refresh_button
 
 logger = logging.getLogger(__name__)
