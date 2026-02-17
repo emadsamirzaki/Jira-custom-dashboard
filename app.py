@@ -32,12 +32,24 @@ st.set_page_config(
 # Hide Streamlit's default menu toolbar in the sidebar for cleaner UI
 hide_streamlit_style = """
     <style>
-    # Hide the top toolbar and user menu
+    /* Hide the top toolbar and user menu */
     [data-testid="stToolbar"] {
         display: none;
     }
-    # Hide the deploy button
+    /* Hide the deploy button and main menu */
     #MainMenu {
+        display: none;
+    }
+    /* Hide the stSidebar header with file explorer */
+    [data-testid="stSidebar"] > div > div:first-child {
+        display: none;
+    }
+    /* Hide page explorer and app structure */
+    .stSidebar [data-testid="stSidebarNav"] {
+        display: none;
+    }
+    /* Alternative selector for page explorer */
+    .stSidebar nav {
         display: none;
     }
     </style>
