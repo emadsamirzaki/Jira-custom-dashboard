@@ -144,24 +144,45 @@ if 'auth_script_injected' not in st.session_state:
 st.set_page_config(
     page_title="Jira Dashboard | Wolters Kluwer",
     page_icon="📊",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"  # Start with sidebar collapsed
 )
 
-# Hide Streamlit's default pages explorer in the sidebar for cleaner UI
-# Keep logout button and other sidebar elements visible
-hide_streamlit_style = """
+# VERY AGGRESSIVE CSS to ensure sidebar is hidden on login
+# This must be placed IMMEDIATELY after set_page_config
+comprehensive_hide_style = """
     <style>
-    /* Hide the nav element that contains page list */
-    [data-testid="stSidebar"] nav {
+    /* Hide entire sidebar and all its contents */
+    [data-testid="stSidebar"],
+    [data-testid="stSidebarNav"],
+    .hide-sidebar [data-testid="stSidebar"],
+    [role="complementary"] {
+        display: none !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+    
+    /* Hide sidebar nav */
+    [data-testid="stSidebar"] nav,
+    [data-testid="stSidebar"] nav ~ * {
         display: none !important;
     }
-    /* Hide the elements after nav that are part of pages explorer */
-    [data-testid="stSidebar"] nav ~ * {
+    
+    /* Hide any menu button or navigation links in sidebar */
+    [data-testid="stSidebar"] [role="menuitem"],
+    [data-testid="stSidebar"] [class*="menu"],
+    [data-testid="stSidebar"] [class*="nav"] {
+        display: none !important;
+    }
+    
+    /* Ensure sidebar takes no space */
+    [data-testid="stSidebar"][aria-hidden="true"] {
         display: none !important;
     }
     </style>
 """
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+st.markdown(comprehensive_hide_style, unsafe_allow_html=True)
 
 # Import modular components and auth
 from config.loader import load_config
@@ -464,14 +485,6 @@ def main():
     
     # Redirect to login if OAuth enabled and not authenticated
     if oauth_enabled and not st.session_state.authenticated:
-        # Explicitly hide sidebar during login
-        st.markdown("""
-            <style>
-            [data-testid="stSidebar"] {
-                display: none !important;
-            }
-            </style>
-        """, unsafe_allow_html=True)
         render_login_page(oauth_config, jira_config)
         return
     
@@ -507,20 +520,33 @@ def main():
     if oauth_enabled and st.session_state.authenticated:
         render_user_menu_top_right()
     
-    # Render sidebar ONLY when fully authenticated or when OAuth is disabled 
-    # This prevents sidebar from appearing on login page
-    render_sidebar_here = False
-    if oauth_enabled:
-        # Only render if OAuth is enabled AND user is authenticated
-        render_sidebar_here = st.session_state.get('authenticated', False)
-    else:
-        # If OAuth is not enabled, always render sidebar (config-based auth)
-        render_sidebar_here = True
-    
-    if render_sidebar_here:
+    # Show sidebar CSS when authenticated
+    if (oauth_enabled and st.session_state.authenticated) or not oauth_enabled:
+        # Show the sidebar by removing the hiding CSS
+        st.markdown("""
+            <style>
+            /* Restore sidebar visibility when authenticated */
+            [data-testid="stSidebar"] {
+                display: block !important;
+                visibility: visible !important;
+            }
+            /* Keep nav hidden (Streamlit pages) */
+            [data-testid="stSidebar"] nav {
+                display: none !important;
+            }
+            </style>
+        """, unsafe_allow_html=True)
         render_sidebar()
-        logger.debug("Sidebar rendered")
+        logger.debug("Sidebar rendered (authenticated)")
     else:
+        # Keep sidebar hidden during login
+        st.markdown("""
+            <style>
+            [data-testid="stSidebar"] {
+                display: none !important;
+            }
+            </style>
+        """, unsafe_allow_html=True)
         logger.debug("Sidebar hidden (not authenticated)")
     
     # Get current page from session state
