@@ -199,6 +199,7 @@ def render_home_page(jira_config):
         if released_versions:
             for version in released_versions:
                 with st.container(border=True):
+                    st.markdown("")  # Add padding
                     # Make title clickable
                     version_url = f"{jira_config['url']}/projects/{jira_config['project_key']}/versions/{version['version_id']}/tab/release-report-all-issues"
                     st.markdown(f"[**{version['name']}**]({version_url})", unsafe_allow_html=True)
@@ -213,6 +214,7 @@ def render_home_page(jira_config):
         if upcoming_versions:
             for version in upcoming_versions:
                 with st.container(border=True):
+                    st.markdown("")  # Add padding
                     # Make title clickable
                     version_url = f"{jira_config['url']}/projects/{jira_config['project_key']}/versions/{version['version_id']}/tab/release-report-all-issues"
                     st.markdown(f"[**{version['name']}**]({version_url})", unsafe_allow_html=True)
