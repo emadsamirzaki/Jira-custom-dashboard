@@ -150,24 +150,8 @@ st.set_page_config(
 # Hide Streamlit's default pages explorer in the sidebar for cleaner UI
 hide_streamlit_style = """
     <style>
-    /* Hide entire nav structure including pages explorer */
+    /* Only hide the nav element that contains Streamlit's pages list (if any) */
     [data-testid="stSidebar"] nav {
-        display: none !important;
-    }
-    /* Hide all dividers and elements that may separate nav from content */
-    [data-testid="stSidebar"] > * > div:nth-child(1) {
-        display: none !important;
-    }
-    /* Hide page links and navigation items */
-    [data-testid="stSidebarNavItems"] {
-        display: none !important;
-    }
-    /* Hide any elements before the main content in sidebar */
-    [data-testid="stSidebar"] > :is(div, nav) {
-        display: none !important;
-    }
-    /* Ensure sidebar only shows when we explicitly render into it */
-    [data-testid="stSidebar"][aria-hidden="false"] > *:not(.sidebar-content) {
         display: none !important;
     }
     </style>
