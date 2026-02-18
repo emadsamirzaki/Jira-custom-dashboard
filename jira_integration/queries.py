@@ -9,10 +9,11 @@ logger = logging.getLogger(__name__)
 CACHE_TTL = int(os.getenv('CACHE_TTL', 300))  # Default 5 minutes, configurable
 
 
-def get_project_info(jira, project_key):
-    """Retrieve project information from Jira."""
+@st.cache_data(ttl=CACHE_TTL)
+def get_project_info(_jira, project_key):
+    """Retrieve project information from Jira. Cached for performance."""
     try:
-        project = jira.project(project_key)
+        project = _jira.project(project_key)
         return {
             'name': project.name,
             'key': project.key,
@@ -23,11 +24,12 @@ def get_project_info(jira, project_key):
         return None
 
 
-def get_active_sprint(jira, board_id):
-    """Retrieve the active/current sprint information from Jira board."""
+@st.cache_data(ttl=CACHE_TTL)
+def get_active_sprint(_jira, board_id):
+    """Retrieve the active/current sprint information from Jira board. Cached."""
     try:
         # Get sprints from the board
-        sprints = jira.sprints(board_id=board_id, state='active')
+        sprints = _jira.sprints(board_id=board_id, state='active')
         
         if not sprints:
             return None
@@ -47,9 +49,10 @@ def get_active_sprint(jira, board_id):
         return None
 
 
-def get_components_issues_count(jira, project_key, sprint_id=None):
+@st.cache_data(ttl=CACHE_TTL)
+def get_components_issues_count(_jira, project_key, sprint_id=None):
     """
-    Retrieve component information and count issues by type (Story/Task vs Bugs).
+    Retrieve component information and count issues by type (Story/Task vs Bugs). Cached.
     If sprint_id is provided, only count issues in that sprint.
     Includes a row for issues with no component assigned.
     Returns a list of dictionaries with component data.
@@ -58,7 +61,7 @@ def get_components_issues_count(jira, project_key, sprint_id=None):
         import pandas as pd
         
         # Get all components in the project
-        project = jira.project(project_key)
+        project = _jira.project(project_key)
         components = project.components
         
         # Build list to store component data
@@ -76,11 +79,11 @@ def get_components_issues_count(jira, project_key, sprint_id=None):
                 # Query issues with this component
                 # Count Story and Task types
                 jql_story_task = f'project = {project_key} AND component = {component_id} AND type in (Story, Task){sprint_filter}'
-                story_task_count = jira.search_issues(jql_story_task, maxResults=0).total
+                story_task_count = _jira.search_issues(jql_story_task, maxResults=0).total
                 
                 # Count Bug type
                 jql_bugs = f'project = {project_key} AND component = {component_id} AND type = Bug{sprint_filter}'
-                bugs_count = jira.search_issues(jql_bugs, maxResults=0).total
+                bugs_count = _jira.search_issues(jql_bugs, maxResults=0).total
                 
                 # Calculate total
                 total_count = story_task_count + bugs_count
@@ -99,10 +102,10 @@ def get_components_issues_count(jira, project_key, sprint_id=None):
         
         # Query issues WITHOUT component
         jql_story_task_no_comp = f'project = {project_key} AND component is EMPTY AND type in (Story, Task){sprint_filter}'
-        story_task_no_comp = jira.search_issues(jql_story_task_no_comp, maxResults=0).total
+        story_task_no_comp = _jira.search_issues(jql_story_task_no_comp, maxResults=0).total
         
         jql_bugs_no_comp = f'project = {project_key} AND component is EMPTY AND type = Bug{sprint_filter}'
-        bugs_no_comp = jira.search_issues(jql_bugs_no_comp, maxResults=0).total
+        bugs_no_comp = _jira.search_issues(jql_bugs_no_comp, maxResults=0).total
         
         total_no_comp = story_task_no_comp + bugs_no_comp
         
@@ -125,14 +128,15 @@ def get_components_issues_count(jira, project_key, sprint_id=None):
         return None
 
 
-def get_project_components(jira, project_key, preferred_order=None):
+@st.cache_data(ttl=CACHE_TTL)
+def get_project_components(_jira, project_key, preferred_order=None):
     """
-    Retrieve all components in a project.
+    Retrieve all components in a project. Cached.
     Optionally sort by preferred order.
     Returns a list of component names.
     """
     try:
-        project = jira.project(project_key)
+        project = _jira.project(project_key)
         components = project.components
         
         if components:
@@ -165,14 +169,15 @@ def get_project_components(jira, project_key, preferred_order=None):
         return []
 
 
-def get_release_versions(jira, project_key):
+@st.cache_data(ttl=CACHE_TTL)
+def get_release_versions(_jira, project_key):
     """
-    Retrieve released and upcoming versions (fix versions) from the project.
+    Retrieve released and upcoming versions (fix versions) from the project. Cached.
     Returns two lists: released_versions and upcoming_versions
     Each version contains: name, description, release_date, status, version_id
     """
     try:
-        project = jira.project(project_key)
+        project = _jira.project(project_key)
         versions = project.versions
         
         released_versions = []
@@ -214,10 +219,11 @@ def get_release_versions(jira, project_key):
         return [], []
 
 
-def get_component_details(jira, project_key, component_name, sprint_id=None):
-    """Get detailed information about a specific component and its issues."""
+@st.cache_data(ttl=CACHE_TTL)
+def get_component_details(_jira, project_key, component_name, sprint_id=None):
+    """Get detailed information about a specific component and its issues. Cached."""
     try:
-        project = jira.project(project_key)
+        project = _jira.project(project_key)
         component = None
         
         # Find the component by name
@@ -234,14 +240,14 @@ def get_component_details(jira, project_key, component_name, sprint_id=None):
         
         # Get all issues for this component
         jql = f'project = {project_key} AND component = {component.id}{sprint_filter} ORDER BY updated DESC'
-        issues = jira.search_issues(jql, maxResults=50)
+        issues = _jira.search_issues(jql, maxResults=50)
         
         # Get issue type breakdown
         jql_story_task = f'project = {project_key} AND component = {component.id} AND type in (Story, Task){sprint_filter}'
-        story_task_count = jira.search_issues(jql_story_task, maxResults=0).total
+        story_task_count = _jira.search_issues(jql_story_task, maxResults=0).total
         
         jql_bugs = f'project = {project_key} AND component = {component.id} AND type = Bug{sprint_filter}'
-        bugs_count = jira.search_issues(jql_bugs, maxResults=0).total
+        bugs_count = _jira.search_issues(jql_bugs, maxResults=0).total
         
         # Get status breakdown
         status_breakdown = {}
@@ -263,14 +269,15 @@ def get_component_details(jira, project_key, component_name, sprint_id=None):
         return None
 
 
-def get_component_capability_status(jira, project_key, component_name, sprint_id=None):
+@st.cache_data(ttl=CACHE_TTL)
+def get_component_capability_status(_jira, project_key, component_name, sprint_id=None):
     """
     Get comprehensive capability status for a component including open ticket counts
-    across different priority levels, sprint status, and time-based metrics.
+    across different priority levels, sprint status, and time-based metrics. Cached.
     Returns a dictionary with counts organized by issue type (Bugs/Features) and filters.
     """
     try:
-        project = jira.project(project_key)
+        project = _jira.project(project_key)
         component = None
         
         # Find the component by name
@@ -316,12 +323,12 @@ def get_component_capability_status(jira, project_key, component_name, sprint_id
         for column_name, base_jql in criteria:
             # Count Defects (Bugs only)
             jql_defect = f'project = {project_key} {base_jql} AND type = Bug'
-            defect_count = jira.search_issues(jql_defect, maxResults=0).total
+            defect_count = _jira.search_issues(jql_defect, maxResults=0).total
             data['Defects'][column_name] = defect_count
             
             # Count Features (Story or Task only)
             jql_feature = f'project = {project_key} {base_jql} AND (type = Story OR type = Task)'
-            feature_count = jira.search_issues(jql_feature, maxResults=0).total
+            feature_count = _jira.search_issues(jql_feature, maxResults=0).total
             data['Features'][column_name] = feature_count
         
         return data
@@ -332,14 +339,15 @@ def get_component_capability_status(jira, project_key, component_name, sprint_id
         return None
 
 
-def get_component_capability_status_historical(jira, project_key, component_name, sprint_id=None, days_ago=7):
+@st.cache_data(ttl=CACHE_TTL)
+def get_component_capability_status_historical(_jira, project_key, component_name, sprint_id=None, days_ago=7):
     """
-    Get capability status for issues as they existed N days ago.
+    Get capability status for issues as they existed N days ago. Cached.
     Used for week-over-week comparisons.
     Returns a dictionary with counts for comparison.
     """
     try:
-        project = jira.project(project_key)
+        project = _jira.project(project_key)
         component = None
         
         # Find the component by name
@@ -381,13 +389,13 @@ def get_component_capability_status_historical(jira, project_key, component_name
         for column_name, base_jql in criteria:
             # Count Defects (Bugs only)
             jql_defect = f'project = {project_key} {base_jql} AND type = Bug'
-            defect_count = jira.search_issues(jql_defect, maxResults=0).total
+            defect_count = _jira.search_issues(jql_defect, maxResults=0).total
             data['Defects'][column_name] = defect_count
             logger.debug(f"{column_name} - Defects: {defect_count}")
             
             # Count Features (Story or Task only)
             jql_feature = f'project = {project_key} {base_jql} AND (type = Story OR type = Task)'
-            feature_count = jira.search_issues(jql_feature, maxResults=0).total
+            feature_count = _jira.search_issues(jql_feature, maxResults=0).total
             data['Features'][column_name] = feature_count
             logger.debug(f"{column_name} - Features: {feature_count}")
         
@@ -400,12 +408,13 @@ def get_component_capability_status_historical(jira, project_key, component_name
         return None
 
 
-def get_critical_high_issues(jira, project_key, component_name, sprint_id=None, sprint_only=False):
+@st.cache_data(ttl=CACHE_TTL)
+def get_critical_high_issues(_jira, project_key, component_name, sprint_id=None, sprint_only=False):
     """
-    Get detailed information about Critical and High priority issues.
+    Get detailed information about Critical and High priority issues. Cached.
     
     Args:
-        jira: Jira connection
+        _jira: Jira connection
         project_key: Project key
         component_name: Component name to filter by
         sprint_id: Current sprint ID
@@ -415,7 +424,7 @@ def get_critical_high_issues(jira, project_key, component_name, sprint_id=None, 
         List of issues with details
     """
     try:
-        project = jira.project(project_key)
+        project = _jira.project(project_key)
         component = None
         
         # Find the component by name
@@ -440,7 +449,7 @@ def get_critical_high_issues(jira, project_key, component_name, sprint_id=None, 
         
         # Get issues without fields restriction to get all available fields including sprint
         # Then fetch each issue individually to ensure all fields are populated
-        initial_issues = jira.search_issues(jql, maxResults=100, expand='changelog')
+        initial_issues = _jira.search_issues(jql, maxResults=100, expand='changelog')
         
         if not initial_issues:
             return None
@@ -450,7 +459,7 @@ def get_critical_high_issues(jira, project_key, component_name, sprint_id=None, 
         for issue in initial_issues:
             try:
                 # Fetch the issue with all available data
-                full_issue = jira.issue(issue.key, expand='changelog')
+                full_issue = _jira.issue(issue.key, expand='changelog')
                 full_issues.append(full_issue)
             except Exception as e:
                 logger.debug(f"Error fetching full issue {issue.key}: {str(e)}")
@@ -468,7 +477,7 @@ def get_critical_high_issues(jira, project_key, component_name, sprint_id=None, 
 @st.cache_data(ttl=CACHE_TTL)
 def get_flagged_issues(_jira, project_key, component_name):
     """
-    Get all issues marked as Flagged in the component.
+    Get all issues with type 'Risk' in the component. Cached.
     
     Args:
         _jira: Jira connection

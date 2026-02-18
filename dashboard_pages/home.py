@@ -12,6 +12,7 @@ from jira_integration.queries import (
 )
 from jira_integration.data_processor import is_date_past
 from ui.utils import display_refresh_button
+from ui.performance import load_data_parallel, display_update_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +53,30 @@ def render_home_page(jira_config):
     # Display Project Information
     st.subheader("📋 Project Information")
     
-    with st.spinner("Fetching project information..."):
-        project_info = get_project_info(jira, jira_config['project_key'])
+    # Fetch data in parallel for better performance (cached for speed)
+    def fetch_project_info():
+        return get_project_info(jira, jira_config['project_key'])
+    
+    def fetch_sprint_info():
+        return get_active_sprint(jira, jira_config['board_id'])
+    
+    def fetch_release_info():
+        return get_release_versions(jira, jira_config['project_key'])
+    
+    # Load all data in parallel with spinner
+    with st.spinner("Loading project and sprint data..."):
+        results = load_data_parallel([
+            ("Project Info", fetch_project_info),
+            ("Sprint Info", fetch_sprint_info),
+            ("Release Info", fetch_release_info)
+        ])
+    
+    # Display timestamp
+    display_update_timestamp()
+    
+    project_info = results.get('Project Info')
+    sprint_info = results.get('Sprint Info')
+    released_versions, upcoming_versions = results.get('Release Info', ([], []))
     
     if project_info:
         col1, col2 = st.columns(2)
@@ -75,9 +98,6 @@ def render_home_page(jira_config):
     
     # Display Sprint Information
     st.subheader("🏃 Active Sprint Information")
-    
-    with st.spinner("Fetching sprint information..."):
-        sprint_info = get_active_sprint(jira, jira_config['board_id'])
     
     if sprint_info:
         col1, spacer1, col2, col3, col4 = st.columns([1.2, 0.3, 1.5, 1.5, 1.5])
@@ -147,8 +167,17 @@ def render_home_page(jira_config):
     st.subheader("📦 Issues by Component (Current Sprint)")
     
     if sprint_info:
-        with st.spinner("Fetching component issues..."):
-            components_data = get_components_issues_count(jira, jira_config['project_key'], sprint_info['id'])
+        # Fetch component data in parallel with spinner
+        def fetch_components_data():
+            return get_components_issues_count(jira, jira_config['project_key'], sprint_info['id'])
+        
+        with st.spinner("Loading component data..."):
+            components_results = load_data_parallel([("Components", fetch_components_data)])
+        
+        components_data = components_results.get('Components')
+        
+        # Display timestamp
+        display_update_timestamp()
         
         if components_data:
             # Convert to DataFrame for better table display
@@ -188,8 +217,7 @@ def render_home_page(jira_config):
     # Display Release Information
     st.subheader("🚀 Releases & Fix Versions")
     
-    with st.spinner("Fetching release information..."):
-        released_versions, upcoming_versions = get_release_versions(jira, jira_config['project_key'])
+    # Release versions were already fetched in parallel above
     
     # Display in two columns - Released and Upcoming
     col1, col2 = st.columns(2)

@@ -6,6 +6,7 @@ import logging
 from jira_integration.client import get_jira_connection, validate_jira_connection
 from jira_integration.queries import get_active_sprint, get_component_details
 from ui.utils import display_refresh_button
+from ui.performance import load_data_parallel, display_update_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +38,19 @@ def render_sprint_status_page(jira_config, component_name):
     sprint_info = get_active_sprint(jira, jira_config['board_id'])
     sprint_id = sprint_info['id'] if sprint_info else None
     
-    # Get component details
-    with st.spinner(f"Fetching {component_name} information..."):
-        component_details = get_component_details(jira, jira_config['project_key'], component_name, sprint_id)
+    # Get component details with spinner
+    def fetch_component_details():
+        return get_component_details(jira, jira_config['project_key'], component_name, sprint_id)
+    
+    with st.spinner(f"Loading {component_name} information..."):
+        results = load_data_parallel([
+            ("Component Details", fetch_component_details)
+        ])
+    
+    # Display timestamp
+    display_update_timestamp()
+    
+    component_details = results.get('Component Details')
     
     if component_details:
         # Display component metrics

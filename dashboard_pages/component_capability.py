@@ -14,6 +14,7 @@ from jira_integration.data_processor import (
     get_mitigation_status, get_mitigation_plan
 )
 from ui.utils import display_refresh_button
+from ui.performance import load_data_parallel, display_update_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -276,14 +277,27 @@ def render_component_capability_page(jira_config, component_name):
     # Display subsection title
     st.subheader("📊 Counts of Open Tickets")
     
-    # Get capability status data
-    with st.spinner(f"Fetching {component_name} capability status..."):
-        capability_data = get_component_capability_status(jira, jira_config['project_key'], component_name, sprint_id)
+    # Fetch data in parallel for better performance (cached for speed)
+    def fetch_capability():
+        return get_component_capability_status(jira, jira_config['project_key'], component_name, sprint_id)
+    
+    def fetch_historical():
+        return get_component_capability_status_historical(jira, jira_config['project_key'], component_name, sprint_id, days_ago=7)
+    
+    # Load capability data in parallel with spinner
+    with st.spinner("Loading capability status data..."):
+        results = load_data_parallel([
+            ("Capability", fetch_capability),
+            ("Historical", fetch_historical)
+        ])
+    
+    # Display timestamp
+    display_update_timestamp()
+    
+    capability_data = results.get('Capability')
+    historical_data = results.get('Historical')
     
     if capability_data:
-        # Get historical data for comparison
-        historical_data = get_component_capability_status_historical(jira, jira_config['project_key'], component_name, sprint_id, days_ago=7)
-        
         # Render the comparison table
         html_table, cap_data = render_capability_comparison_table(capability_data, historical_data, jira_config)
         
