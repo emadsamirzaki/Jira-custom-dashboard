@@ -214,6 +214,107 @@ def get_resolution_approach(issue):
         return 'N/A'
 
 
+def get_mitigation_status(issue):
+    """
+    Get the Mitigation Status field from an issue (customfield_11487).
+    
+    Args:
+        issue: Jira issue object
+    
+    Returns:
+        Mitigation status text or 'N/A' if not found or empty
+    """
+    try:
+        field_id = 'customfield_11487'
+        
+        if hasattr(issue.fields, field_id):
+            value = getattr(issue.fields, field_id)
+            if value:
+                # Handle select field object with 'value' property
+                if isinstance(value, dict):
+                    if 'value' in value:
+                        val_str = str(value['value']).strip()
+                        if val_str:
+                            return val_str[:500]
+                    elif 'name' in value:
+                        val_str = str(value['name']).strip()
+                        if val_str:
+                            return val_str[:500]
+                # Handle string value
+                elif isinstance(value, str):
+                    cleaned = value.strip()
+                    if cleaned:
+                        return cleaned[:500]
+                else:
+                    val_str = str(value).strip()
+                    if val_str and val_str.lower() != 'none':
+                        return val_str[:500]
+        
+        return 'N/A'
+    
+    except Exception as e:
+        logger.debug(f"Error getting mitigation status: {str(e)}")
+        return 'N/A'
+
+
+def get_mitigation_plan(issue):
+    """
+    Get the Mitigation Plan field from an issue (customfield_11486).
+    Handles Atlassian Document Format (ADF) rich text.
+    
+    Args:
+        issue: Jira issue object
+    
+    Returns:
+        Mitigation plan text or 'N/A' if not found or empty
+    """
+    try:
+        field_id = 'customfield_11486'
+        
+        if hasattr(issue.fields, field_id):
+            value = getattr(issue.fields, field_id)
+            if value:
+                # Handle ADF (Atlassian Document Format) document
+                if isinstance(value, dict):
+                    if 'content' in value:
+                        # Extract text from ADF content
+                        text_parts = []
+                        content_list = value.get('content', [])
+                        
+                        def extract_text_from_adf(node):
+                            """Recursively extract text from ADF nodes."""
+                            if isinstance(node, dict):
+                                # If node has text, add it
+                                if 'text' in node:
+                                    text_parts.append(node['text'])
+                                # If node has content (children), recurse
+                                if 'content' in node and isinstance(node['content'], list):
+                                    for child in node['content']:
+                                        extract_text_from_adf(child)
+                        
+                        for content_node in content_list:
+                            extract_text_from_adf(content_node)
+                        
+                        combined_text = ' '.join(text_parts).strip()
+                        if combined_text:
+                            return combined_text[:500]
+                # Handle plain string
+                elif isinstance(value, str):
+                    cleaned = value.strip()
+                    if cleaned:
+                        return cleaned[:500]
+                else:
+                    val_str = str(value).strip()
+                    if val_str and val_str.lower() != 'none':
+                        return val_str[:500]
+        
+        return 'N/A'
+    
+    except Exception as e:
+        logger.debug(f"Error getting mitigation plan: {str(e)}")
+        return 'N/A'
+
+
 def get_flagged_comment(issue):
     """
     Extract the comment linked to the flag from an issue.

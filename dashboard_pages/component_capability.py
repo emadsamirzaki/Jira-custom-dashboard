@@ -7,10 +7,11 @@ from jira_integration.client import get_jira_connection, validate_jira_connectio
 from jira_integration.queries import (
     get_active_sprint, get_component_capability_status,
     get_component_capability_status_historical, get_critical_high_issues,
-    get_flagged_issues
+    get_flagged_issues, get_risk_issues
 )
 from jira_integration.data_processor import (
-    get_target_completion_date, get_resolution_approach, get_flagged_comment
+    get_target_completion_date, get_resolution_approach, get_flagged_comment,
+    get_mitigation_status, get_mitigation_plan
 )
 from ui.utils import display_refresh_button
 
@@ -595,17 +596,99 @@ def render_component_capability_page(jira_config, component_name):
         
         st.divider()
         
-        # RISK SECTION - Flagged issues
-        st.subheader("⚠️ Risk - Flagged Issues")
+        # RISK & FLAGGED ISSUES SECTION - Combined section with tabs
+        st.subheader("🚨 Risks & Flagged Issues")
         
-        with st.spinner("Fetching flagged issues..."):
-            flagged_issues = get_flagged_issues(jira, jira_config['project_key'], component_name)
+        # Create tabs for Main Risk and Flagged Issues
+        tab_risk, tab_flagged = st.tabs(["🚨 Main Risks", "⚠️ Flagged Issues"])
         
-        if flagged_issues:
-            jira_url = jira_config['url'].rstrip('/')
+        # MAIN RISK TAB
+        with tab_risk:
+            st.write("**Main Risk Issues**")
             
-            # Build styled HTML table for flagged issues
-            html_table_flagged = """<style>
+            with st.spinner("Fetching risk issues..."):
+                risk_issues = get_risk_issues(jira, jira_config['project_key'], component_name)
+            
+            if risk_issues:
+                jira_url = jira_config['url'].rstrip('/')
+                
+                # Build styled HTML table for risk issues
+                html_table_risks = """<style>
+.risk-issues-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+}
+.risk-issues-table th {
+    background-color: #ffe8e8;
+    border: 1px solid #ffcccc;
+    padding: 10px;
+    font-weight: bold;
+    text-align: left;
+    color: #c62828;
+}
+.risk-issues-table td {
+    border: 1px solid #ffcccc;
+    padding: 10px;
+    text-align: left;
+}
+.risk-issues-table a {
+    color: #1f77b4;
+    text-decoration: none;
+    font-weight: bold;
+}
+.risk-issues-table a:hover {
+    text-decoration: underline;
+}
+</style>
+
+<table class="risk-issues-table">
+<tr>
+<th>Issue</th>
+<th>Type</th>
+<th>Summary</th>
+<th>Priority</th>
+<th>Mitigation Status</th>
+<th>Mitigation Plan</th>
+</tr>
+"""
+                
+                for issue in risk_issues:
+                    # Get issue type
+                    issue_type = issue.fields.issuetype.name if issue.fields.issuetype else 'N/A'
+                    
+                    # Display full summary
+                    summary = issue.fields.summary
+                    
+                    # Create clickable issue link
+                    issue_link = f'<a href="{jira_url}/browse/{issue.key}" target="_blank">{issue.key}</a>'
+                    priority = issue.fields.priority.name if issue.fields.priority else 'N/A'
+                    
+                    # Get the mitigation status and mitigation plan
+                    mitigation_status = get_mitigation_status(issue)
+                    mitigation_plan = get_mitigation_plan(issue)
+                    
+                    html_table_risks += f"<tr><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{mitigation_status}</td><td>{mitigation_plan}</td></tr>"
+                
+                html_table_risks += "</table>"
+                
+                st.markdown(html_table_risks, unsafe_allow_html=True)
+            else:
+                st.info("✅ No risk issues identified.")
+        
+        # FLAGGED ISSUES TAB
+        with tab_flagged:
+            st.write("**Flagged Issues**")
+            
+            with st.spinner("Fetching flagged issues..."):
+                flagged_issues = get_flagged_issues(jira, jira_config['project_key'], component_name)
+            
+            if flagged_issues:
+                jira_url = jira_config['url'].rstrip('/')
+                
+                # Build styled HTML table for flagged issues
+                html_table_flagged = """<style>
 .risk-table {
     width: 100%;
     border-collapse: collapse;
@@ -644,28 +727,28 @@ def render_component_capability_page(jira_config, component_name):
 <th>Flag Comment/Description</th>
 </tr>
 """
-            
-            for issue in flagged_issues:
-                # Get issue type
-                issue_type = issue.fields.issuetype.name if issue.fields.issuetype else 'N/A'
                 
-                # Display full summary
-                summary = issue.fields.summary
+                for issue in flagged_issues:
+                    # Get issue type
+                    issue_type = issue.fields.issuetype.name if issue.fields.issuetype else 'N/A'
+                    
+                    # Display full summary
+                    summary = issue.fields.summary
+                    
+                    # Create clickable issue link
+                    issue_link = f'<a href="{jira_url}/browse/{issue.key}" target="_blank">{issue.key}</a>'
+                    priority = issue.fields.priority.name if issue.fields.priority else 'N/A'
+                    
+                    # Get the flagged comment
+                    flag_comment = get_flagged_comment(issue)
+                    
+                    html_table_flagged += f"<tr><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{flag_comment}</td></tr>"
                 
-                # Create clickable issue link
-                issue_link = f'<a href="{jira_url}/browse/{issue.key}" target="_blank">{issue.key}</a>'
-                priority = issue.fields.priority.name if issue.fields.priority else 'N/A'
+                html_table_flagged += "</table>"
                 
-                # Get the flagged comment
-                flag_comment = get_flagged_comment(issue)
-                
-                html_table_flagged += f"<tr><td>{issue_link}</td><td>{issue_type}</td><td>{summary}</td><td>{priority}</td><td>{flag_comment}</td></tr>"
-            
-            html_table_flagged += "</table>"
-            
-            st.markdown(html_table_flagged, unsafe_allow_html=True)
-        else:
-            st.info("✅ No flagged issues found. All systems go!")
+                st.markdown(html_table_flagged, unsafe_allow_html=True)
+            else:
+                st.info("✅ No flagged issues found. All systems go!")
     
     else:
         st.error(f"Unable to fetch capability status for {component_name}")

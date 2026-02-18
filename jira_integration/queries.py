@@ -504,3 +504,43 @@ def get_flagged_issues(_jira, project_key, component_name):
         logger.error(f"Error fetching flagged issues: {str(e)}")
         st.error(f"Error fetching flagged issues: {str(e)}")
         return None
+
+
+def get_risk_issues(_jira, project_key, component_name):
+    """
+    Get all issues with type 'Risk' in the component.
+    
+    Args:
+        _jira: Jira connection
+        project_key: Project key
+        component_name: Component name to filter by
+    
+    Returns:
+        List of risk issues with details
+    """
+    try:
+        project = _jira.project(project_key)
+        component = None
+        
+        # Find the component by name
+        for comp in project.components:
+            if comp.name == component_name:
+                component = comp
+                break
+        
+        if not component:
+            return None
+        
+        # Search for issues with type Risk in the component
+        component_filter = f'AND component = {component.id}'
+        jql = f'project = {project_key} {component_filter} AND type = Risk AND resolution = Unresolved ORDER BY priority DESC, created DESC'
+        
+        # Expand to get full details including custom fields
+        issues = _jira.search_issues(jql, maxResults=100, expand='changelog,comments')
+        
+        return issues if issues else None
+    
+    except Exception as e:
+        logger.error(f"Error fetching risk issues: {str(e)}")
+        st.error(f"Error fetching risk issues: {str(e)}")
+        return None

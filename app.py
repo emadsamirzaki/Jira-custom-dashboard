@@ -380,6 +380,8 @@ def render_user_menu_top_right():
         with st.expander(welcome_text, expanded=False):
             # Add spacing before content
             st.markdown("")
+            st.markdown("")
+
             
             # Display user info and avatar
             col_img, col_info = st.columns([1, 2])
