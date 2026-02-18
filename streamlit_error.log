@@ -1,0 +1,100 @@
+2026-02-17 18:10:21.998 No ASGI app assignments found in D:\Development\Custom Jira Dashboards\app.py
+2026-02-17 18:10:22.173 Filtered 55 packages down to 1 candidates for component scanning
+2026-02-17 18:10:22.175 Scanning 1 candidate packages for component manifests using 1 worker threads
+2026-02-17 18:10:22.189 Found 0 component manifests total
+2026-02-17 18:10:22.190 No asset roots to watch
+2026-02-17 18:10:22.190 File watching not started
+2026-02-17 18:10:22.191 Starting new event loop for server
+2026-02-17 18:10:22.193 Starting server...
+2026-02-17 18:10:22.194 Serving static content from D:\Development\Custom Jira Dashboards\.venv\Lib\site-packages\streamlit\static
+2026-02-17 18:10:22.196 Port 8501 not available, trying to use the next one.
+2026-02-17 18:10:22.197 Port 8502 not available, trying to use the next one.
+2026-02-17 18:10:22.197 Port 8503 not available, trying to use the next one.
+2026-02-17 18:10:22.197 Port 8504 not available, trying to use the next one.
+2026-02-17 18:10:22.198 Port 8505 not available, trying to use the next one.
+2026-02-17 18:10:22.198 Port 8506 not available, trying to use the next one.
+2026-02-17 18:10:22.199 Port 8507 not available, trying to use the next one.
+2026-02-17 18:10:22.199 Port 8508 not available, trying to use the next one.
+2026-02-17 18:10:22.199 Port 8509 not available, trying to use the next one.
+2026-02-17 18:10:22.200 Port 8510 not available, trying to use the next one.
+2026-02-17 18:10:22.200 Port 8511 not available, trying to use the next one.
+2026-02-17 18:10:22.200 Port 8512 not available, trying to use the next one.
+2026-02-17 18:10:22.200 Port 8513 not available, trying to use the next one.
+2026-02-17 18:10:22.200 Port 8514 not available, trying to use the next one.
+2026-02-17 18:10:22.201 Port 8515 not available, trying to use the next one.
+2026-02-17 18:10:22.201 Port 8516 not available, trying to use the next one.
+2026-02-17 18:10:22.201 Port 8517 not available, trying to use the next one.
+2026-02-17 18:10:22.201 Port 8518 not available, trying to use the next one.
+2026-02-17 18:10:22.201 Port 8519 not available, trying to use the next one.
+2026-02-17 18:10:22.201 Port 8520 not available, trying to use the next one.
+2026-02-17 18:10:22.201 Port 8521 not available, trying to use the next one.
+2026-02-17 18:10:22.202 Port 8522 not available, trying to use the next one.
+2026-02-17 18:10:22.202 Port 8523 not available, trying to use the next one.
+2026-02-17 18:10:22.202 Port 8524 not available, trying to use the next one.
+2026-02-17 18:10:22.202 Port 8525 not available, trying to use the next one.
+2026-02-17 18:10:22.202 Port 8526 not available, trying to use the next one.
+2026-02-17 18:10:22.205 Server started on port 8527
+2026-02-17 18:10:22.205 Runtime state: RuntimeState.INITIAL -> RuntimeState.NO_SESSIONS_CONNECTED
+2026-02-17 18:10:22.268 Setting up signal handler
+2026-02-17 18:10:22.753 No singleton. Registering one.
+2026-02-17 18:10:22.770 Watcher created for D:\Development\Custom Jira Dashboards\app.py
+2026-02-17 18:10:22.770 AppSession initialized (id=3acd69a2-06e4-4795-aab4-2b84200d374c)
+2026-02-17 18:10:22.771 Created new session for client 2574809061904. Session ID: 3acd69a2-06e4-4795-aab4-2b84200d374c
+2026-02-17 18:10:22.771 Runtime state: RuntimeState.NO_SESSIONS_CONNECTED -> RuntimeState.ONE_OR_MORE_SESSIONS_CONNECTED
+2026-02-17 18:10:22.771 Received the following back message:
+rerun_script {
+  widget_states {
+  }
+  context_info {
+    timezone: "Africa/Cairo"
+    timezone_offset: -120
+    locale: "en-US"
+    url: "http://localhost:8527/"
+    is_embedded: false
+    color_scheme: "light"
+  }
+}
+
+2026-02-17 18:10:22.775 Beginning script thread
+2026-02-17 18:10:22.778 Running script RerunData(widget_states=, context_info=timezone: "Africa/Cairo"
+timezone_offset: -120
+locale: "en-US"
+url: "http://localhost:8527/"
+is_embedded: false
+color_scheme: "light"
+)
+2026-02-17 18:10:22.778 Disconnecting files for session with ID 3acd69a2-06e4-4795-aab4-2b84200d374c
+2026-02-17 18:10:22.778 Sessions still active: dict_keys([])
+2026-02-17 18:10:22.779 Files: 0; Sessions with files: 0
+2026-02-17 18:10:23,410 - auth.oauth - INFO - Generated OAuth URL: https://auth.atlassian.com/authorize?client_id=B5RYfA84PhNu5jOV6yhaIK1wzQkO2m8M&redirect_uri=http%3A%2F%2Flocalhost%3A8501&response_type=code&scope=read%3Ame+read%3Ajira-work+read%3Ajira-user+offline_access
+2026-02-17 18:10:23,410 - auth.oauth - INFO - Redirect URI in request: http://localhost:8501
+2026-02-17 18:10:23.414 Removing orphaned files...
+2026-02-17 18:10:23.414 Removing orphaned deferred callables...
+2026-02-17 18:10:23.763 Watcher created for D:\Development\Custom Jira Dashboards\config\__init__.py
+2026-02-17 18:10:23.765 Watcher created for D:\Development\Custom Jira Dashboards\config\loader.py
+2026-02-17 18:10:23.767 Watcher created for D:\Development\Custom Jira Dashboards\components\__init__.py
+2026-02-17 18:10:23.768 Watcher created for D:\Development\Custom Jira Dashboards\jira_integration\__init__.py
+2026-02-17 18:10:23.769 Watcher created for D:\Development\Custom Jira Dashboards\jira_integration\client.py
+2026-02-17 18:10:23.769 Watcher created for D:\Development\Custom Jira Dashboards\jira_integration\queries.py
+2026-02-17 18:10:23.771 Watcher created for D:\Development\Custom Jira Dashboards\ui\__init__.py
+2026-02-17 18:10:23.772 Watcher created for D:\Development\Custom Jira Dashboards\ui\branding.py
+2026-02-17 18:10:23.772 Watcher created for D:\Development\Custom Jira Dashboards\components\sidebar.py
+2026-02-17 18:10:23.773 Watcher created for D:\Development\Custom Jira Dashboards\pages\__init__.py
+2026-02-17 18:10:23.774 Watcher created for D:\Development\Custom Jira Dashboards\jira_integration\data_processor.py
+2026-02-17 18:10:23.775 Watcher created for D:\Development\Custom Jira Dashboards\ui\utils.py
+2026-02-17 18:10:23.776 Watcher created for D:\Development\Custom Jira Dashboards\pages\home.py
+2026-02-17 18:10:23.777 Watcher created for D:\Development\Custom Jira Dashboards\pages\sprint_status.py
+2026-02-17 18:10:23.778 Watcher created for D:\Development\Custom Jira Dashboards\pages\component_capability.py
+2026-02-17 18:10:23.779 Watcher created for D:\Development\Custom Jira Dashboards\pages\sprint_metrics.py
+2026-02-17 18:10:23.780 Watcher created for D:\Development\Custom Jira Dashboards\pages\custom_reports.py
+2026-02-17 18:10:23.781 Watcher created for D:\Development\Custom Jira Dashboards\auth\oauth.py
+2026-02-17 18:10:23.782 Watcher created for D:\Development\Custom Jira Dashboards\auth\__init__.py
+2026-02-17 18:10:23.782 Watcher created for D:\Development\Custom Jira Dashboards\auth\login.py
+2026-02-17 18:10:23.783 Watcher created for D:\Development\Custom Jira Dashboards\pages\component_capability.py
+2026-02-17 18:10:23.783 Watcher created for D:\Development\Custom Jira Dashboards\pages\custom_reports.py
+2026-02-17 18:10:23.784 Watcher created for D:\Development\Custom Jira Dashboards\pages\home.py
+2026-02-17 18:10:23.785 Watcher created for D:\Development\Custom Jira Dashboards\pages\sprint_metrics.py
+2026-02-17 18:10:23.785 Watcher created for D:\Development\Custom Jira Dashboards\pages\sprint_status.py
+2026-02-17 18:10:24.460 Ignoring changed path D:\Development\Custom Jira Dashboards\streamlit_debug.log.
+Watched_paths: {'D:\\Development\\Custom Jira Dashboards\\app.py': WatchedPath(md5='9777f0c370f27a26f8594ed207109c4e', modification_time=1771344271.5827081, on_changed=<blinker.base.Signal object at 0x000002577E973390>)}
+2026-02-17 18:11:08.560 Runtime state: RuntimeState.ONE_OR_MORE_SESSIONS_CONNECTED -> RuntimeState.NO_SESSIONS_CONNECTED

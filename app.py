@@ -150,12 +150,24 @@ st.set_page_config(
 # Hide Streamlit's default pages explorer in the sidebar for cleaner UI
 hide_streamlit_style = """
     <style>
-    /* Hide the nav element that contains page list */
+    /* Hide entire nav structure including pages explorer */
     [data-testid="stSidebar"] nav {
         display: none !important;
     }
-    /* Hide the elements after nav that are part of pages explorer */
-    [data-testid="stSidebar"] nav ~ * {
+    /* Hide all dividers and elements that may separate nav from content */
+    [data-testid="stSidebar"] > * > div:nth-child(1) {
+        display: none !important;
+    }
+    /* Hide page links and navigation items */
+    [data-testid="stSidebarNavItems"] {
+        display: none !important;
+    }
+    /* Hide any elements before the main content in sidebar */
+    [data-testid="stSidebar"] > :is(div, nav) {
+        display: none !important;
+    }
+    /* Ensure sidebar only shows when we explicitly render into it */
+    [data-testid="stSidebar"][aria-hidden="false"] > *:not(.sidebar-content) {
         display: none !important;
     }
     </style>
@@ -166,11 +178,11 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 from config.loader import load_config
 from components.sidebar import render_sidebar
 from ui.branding import display_branded_header, display_branded_footer
-from pages.home import render_home_page
-from pages.sprint_status import render_sprint_status_page
-from pages.component_capability import render_component_capability_page
-from pages.sprint_metrics import render_sprint_metrics_page
-from pages.custom_reports import render_custom_reports_page
+from dashboard_pages.home import render_home_page
+from dashboard_pages.sprint_status import render_sprint_status_page
+from dashboard_pages.component_capability import render_component_capability_page
+from dashboard_pages.sprint_metrics import render_sprint_metrics_page
+from dashboard_pages.custom_reports import render_custom_reports_page
 from auth import (
     exchange_code_for_token,
     get_user_info,
