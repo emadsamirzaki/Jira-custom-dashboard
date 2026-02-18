@@ -345,52 +345,119 @@ def handle_oauth_callback(oauth_config: dict, jira_config: dict):
 
 
 def render_user_menu_top_right():
-    """Render compact user menu in top right corner like Jira."""
+    """Render professional top header bar with Jira branding and user menu."""
     user_info = st.session_state.get('user_info', {})
     
     if not user_info:
         return
     
-    name = user_info.get('name', 'User')
     email = user_info.get('email', 'N/A')
-    picture = user_info.get('picture')
     
-    # Create top right menu using columns
-    col_spacer, col_menu = st.columns([4, 1])
+    # Create a professional top header bar
+    header_html = f"""
+    <style>
+    .jira-top-header {{
+        position: sticky;
+        top: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        background: linear-gradient(90deg, #0052CC 0%, #0052CC 100%);
+        padding: 12px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        z-index: 999;
+        margin: -20px -20px 20px -20px;
+    }}
     
-    with col_menu:
-        # Expandable menu in top right
-        with st.expander("👤", expanded=False):
-            st.markdown(f"**{name}**")
-            st.caption(email)
+    .jira-branding {{
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: white;
+        font-weight: 600;
+        font-size: 16px;
+    }}
+    
+    .jira-icon {{
+        font-size: 24px;
+    }}
+    
+    .jira-name {{
+        color: white;
+        font-weight: 600;
+    }}
+    
+    .user-menu-container {{
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        color: white;
+        font-size: 14px;
+    }}
+    
+    .user-email {{
+        color: #B3D4FF;
+    }}
+    
+    .logout-btn {{
+        background-color: #F87462;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 3px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }}
+    
+    .logout-btn:hover {{
+        background-color: #E25C48;
+    }}
+    </style>
+    
+    <div class="jira-top-header">
+        <div class="jira-branding">
+            <span class="jira-icon">⚙️</span>
+            <span class="jira-name">Jira Dashboard</span>
+        </div>
+        <div class="user-menu-container">
+            <span class="user-email">{email}</span>
+        </div>
+    </div>
+    """
+    
+    st.markdown(header_html, unsafe_allow_html=True)
+    
+    # Create logout button using columns for alignment
+    col_spacer, col_logout = st.columns([5, 1])
+    
+    with col_logout:
+        if st.button("🚪 Logout", use_container_width=True, key="logout_btn_top"):
+            # Delete session file
+            if st.session_state.get('session_id'):
+                delete_session(st.session_state.session_id)
             
-            if picture:
-                st.image(picture, width=80)
+            # Clear browser localStorage
+            st.markdown("""
+                <script>
+                window.clearPersistedAuthData();
+                </script>
+            """, unsafe_allow_html=True)
             
-            st.divider()
-            
-            if st.button("🚪 Logout", use_container_width=True, key="logout_btn_top"):
-                # Delete session file
-                if st.session_state.get('session_id'):
-                    delete_session(st.session_state.session_id)
-                
-                # Clear browser localStorage
-                st.markdown("""
-                    <script>
-                    window.clearPersistedAuthData();
-                    </script>
-                """, unsafe_allow_html=True)
-                
-                # Clear all session state
-                st.session_state.authenticated = False
-                st.session_state.access_token = None
-                st.session_state.refresh_token = None
-                st.session_state.user_info = None
-                st.session_state.current_page = 'Home'
-                st.session_state.selected_component = None
-                st.session_state.oauth_code_processed = False  # Reset for next login
-                st.session_state.session_id = None
-                st.rerun()
+            # Clear all session state
+            st.session_state.authenticated = False
+            st.session_state.access_token = None
+            st.session_state.refresh_token = None
+            st.session_state.user_info = None
+            st.session_state.current_page = 'Home'
+            st.session_state.selected_component = None
+            st.session_state.oauth_code_processed = False
+            st.session_state.session_id = None
+            st.rerun()
 
 
 def render_user_menu():
