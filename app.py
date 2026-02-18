@@ -345,7 +345,7 @@ def handle_oauth_callback(oauth_config: dict, jira_config: dict):
 
 
 def render_user_menu_top_right():
-    """Render compact user menu in top right corner with user image and name."""
+    """Render compact user menu in top right corner with user image and welcome message."""
     user_info = st.session_state.get('user_info', {})
     
     if not user_info:
@@ -355,20 +355,29 @@ def render_user_menu_top_right():
     email = user_info.get('email', 'N/A')
     picture = user_info.get('picture')
     
+    # Extract first name
+    first_name = name.split()[0] if name else 'User'
+    welcome_text = f"Welcome {first_name}"
+    
+    # Add CSS to remove top padding and position at very top
+    st.markdown("""
+        <style>
+        .stTop { 
+            margin-top: -20px !important;
+            padding-top: 0 !important;
+        }
+        [data-testid="stVerticalBlock"] > :first-child {
+            margin-top: -20px !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
     # Create top right menu using columns
     col_spacer, col_menu = st.columns([4, 1])
     
     with col_menu:
-        # Create expandable menu with user image and name
-        # CSS to style the expander with image
-        menu_label = f"""
-        <div style="display: flex; align-items: center; gap: 8px; padding: 4px 8px;">
-            <img src="{picture}" width="24" height="24" style="border-radius: 50%; object-fit: cover;">
-            <span style="font-size: 14px; font-weight: 500;">{name}</span>
-        </div>
-        """
-        
-        with st.expander(name, expanded=False):
+        # Create expandable menu with user image and welcome message
+        with st.expander(welcome_text, expanded=False):
             # Display user info and avatar
             col_img, col_info = st.columns([1, 2])
             
