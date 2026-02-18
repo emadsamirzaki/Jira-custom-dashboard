@@ -345,21 +345,41 @@ def handle_oauth_callback(oauth_config: dict, jira_config: dict):
 
 
 def render_user_menu_top_right():
-    """Render compact user menu in top right corner with Jira branding."""
+    """Render compact user menu in top right corner with user image and name."""
     user_info = st.session_state.get('user_info', {})
     
     if not user_info:
         return
     
+    name = user_info.get('name', 'User')
     email = user_info.get('email', 'N/A')
+    picture = user_info.get('picture')
     
     # Create top right menu using columns
     col_spacer, col_menu = st.columns([4, 1])
     
     with col_menu:
-        # Expandable menu with Jira icon and name
-        with st.expander("⚙️ Jira Dashboard", expanded=False):
-            st.markdown(f"**{email}**")
+        # Create expandable menu with user image and name
+        # CSS to style the expander with image
+        menu_label = f"""
+        <div style="display: flex; align-items: center; gap: 8px; padding: 4px 8px;">
+            <img src="{picture}" width="24" height="24" style="border-radius: 50%; object-fit: cover;">
+            <span style="font-size: 14px; font-weight: 500;">{name}</span>
+        </div>
+        """
+        
+        with st.expander(name, expanded=False):
+            # Display user info and avatar
+            col_img, col_info = st.columns([1, 2])
+            
+            with col_img:
+                if picture:
+                    st.image(picture, width=60)
+            
+            with col_info:
+                st.markdown(f"**{name}**")
+                st.caption(email)
+            
             st.divider()
             
             if st.button("🚪 Logout", use_container_width=True, key="logout_btn_top"):
