@@ -6,7 +6,7 @@ import os
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
-CACHE_TTL = int(os.getenv('CACHE_TTL', 300))  # Default 5 minutes, configurable
+CACHE_TTL = int(os.getenv('CACHE_TTL', 3000))  # Default 5 minutes, configurable
 
 
 @st.cache_data(ttl=CACHE_TTL)

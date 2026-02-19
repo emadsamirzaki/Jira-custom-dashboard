@@ -1,6 +1,9 @@
 # Configuration with sensitive data
 config.yaml
 
+# Token Storage
+.auth_tokens/
+
 # Python
 .venv/
 __pycache__/

@@ -235,3 +235,82 @@ def is_token_valid(token_data: Optional[Dict]) -> bool:
         return False
     
     return 'access_token' in token_data
+
+
+def create_state_with_provider(provider: str = 'jira') -> str:
+    """
+    Create a state parameter with provider information.
+    
+    Used to track which OAuth provider was used (jira or microsoft).
+    Format: "provider:random_string"
+    
+    Args:
+        provider: OAuth provider ('jira' or 'microsoft')
+        
+    Returns:
+        State string with provider info
+    """
+    import secrets
+    import base64
+    
+    # Generate random bytes and encode with provider
+    random_bytes = secrets.token_bytes(16)
+    random_string = base64.urlsafe_b64encode(random_bytes).decode('utf-8').rstrip('=')
+    
+    return f"{provider}:{random_string}"
+
+
+def extract_provider_from_state(state: str) -> str:
+    """
+    Extract the provider from a state parameter.
+    
+    Args:
+        state: State parameter from OAuth callback (format: "provider:random_string")
+        
+    Returns:
+        Provider name ('jira' or 'microsoft'), defaults to 'jira' if not found
+    """
+    if not state or ':' not in state:
+        return 'jira'
+    
+    provider = state.split(':')[0]
+    return provider if provider in ['jira', 'microsoft'] else 'jira'
+
+
+def validate_oauth_config(oauth_config: Dict) -> Tuple[bool, str]:
+    """
+    Validate that OAuth configuration has all required fields.
+    
+    Args:
+        oauth_config: OAuth configuration dictionary
+        
+    Returns:
+        Tuple of (is_valid, message)
+    """
+    required_fields = [
+        'client_id',
+        'client_secret',
+        'redirect_uri',
+        'auth_url',
+        'token_url',
+        'resource_url',
+        'scope'
+    ]
+    
+    missing_fields = [field for field in required_fields if not oauth_config.get(field)]
+    
+    if missing_fields:
+        error_msg = f"Missing OAuth configuration fields: {', '.join(missing_fields)}"
+        logger.error(error_msg)
+        return False, error_msg
+    
+    # Validate that URLs are properly formatted
+    for url_field in ['redirect_uri', 'auth_url', 'token_url', 'resource_url']:
+        url = oauth_config.get(url_field, '')
+        if not url.startswith(('http://', 'https://')):
+            error_msg = f"Invalid URL format for {url_field}: {url}"
+            logger.error(error_msg)
+            return False, error_msg
+    
+    logger.info("OAuth configuration is valid")
+    return True, "OAuth configuration is valid"

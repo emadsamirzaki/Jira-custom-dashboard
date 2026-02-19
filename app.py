@@ -173,6 +173,13 @@ from auth import (
     validate_user_belongs_to_workspace,
     JiraOAuthError
 )
+from auth.microsoft_oauth import (
+    exchange_microsoft_code_for_token,
+    get_microsoft_user_info,
+    validate_microsoft_user,
+    MicrosoftOAuthError
+)
+from auth.token_storage import save_token, load_token, is_token_valid, get_user_email_from_token
 from auth.login import render_login_page
 
 
@@ -269,6 +276,9 @@ def handle_oauth_callback(oauth_config: dict, jira_config: dict):
         logger.info("Already authenticated, skipping OAuth callback processing")
         return False
     
+    # Extract Jira OAuth config from nested structure if available
+    jira_oauth_config = oauth_config.get('jira', oauth_config) if 'jira' in oauth_config else oauth_config
+    
     query_params = get_query_params()
     
     if 'code' not in query_params:
@@ -283,13 +293,13 @@ def handle_oauth_callback(oauth_config: dict, jira_config: dict):
         with st.spinner("Authenticating with Atlassian..."):
             logger.info("Starting token exchange...")
             # Exchange auth code for access token
-            token_data = exchange_code_for_token(auth_code, oauth_config)
+            token_data = exchange_code_for_token(auth_code, jira_oauth_config)
             logger.info("Token exchange successful")
             
             # Get user information
             access_token = token_data.get('access_token')
             logger.info("Exchanging token for user info...")
-            user_info = get_user_info(access_token, oauth_config)
+            user_info = get_user_info(access_token, jira_oauth_config)
             logger.info(f"User info retrieved: {user_info}")
             
             # Validate user belongs to workspace
@@ -338,22 +348,190 @@ def handle_oauth_callback(oauth_config: dict, jira_config: dict):
         error_msg = str(e)
         logger.error(f"OAuth callback error: {error_msg}")
         st.error(f"❌ Authentication Error: {error_msg}")
+        
+        # Provide specific troubleshooting for common errors
+        if "authorization_code is invalid" in error_msg:
+            st.warning("""
+            **This usually means:**
+            
+            1. **Redirect URI Mismatch** - The redirect_uri in your Jira OAuth app doesn't match config.yaml
+               - Go to [Atlassian Developer Console](https://developer.atlassian.com/console/myapps/)
+               - Check **Redirect URIs** - must be exactly: `http://localhost:8501`
+               - Update `config.yaml` if different
+               
+            2. **Outdated Credentials** - Your Client ID or Client Secret may have changed
+               - Check Jira app settings and copy fresh credentials
+               - Update `config.yaml` with new values
+               
+            3. **Authorization Code Expired** - Took too long between clicking login button and completing auth
+               - Try logging in again
+            """)
+        
+        # Add a retry button
+        if st.button("🔄 Try Again", key="retry_login"):
+            st.query_params.clear()
+            st.rerun()
     except Exception as e:
         error_msg = str(e)
         logger.error(f"Unexpected error in OAuth callback: {error_msg}")
         st.error(f"❌ Unexpected error during authentication: {error_msg}")
+        
+        if st.button("🔄 Try Again", key="retry_login_unexpected"):
+            st.query_params.clear()
+            st.rerun()
+
+
+def handle_microsoft_oauth_callback(microsoft_config: dict, jira_config: dict):
+    """
+    Handle OAuth 2.0 callback from Microsoft Entra ID.
+    
+    Checks query params for auth code and exchanges it for token.
+    Only processes if not already authenticated.
+    """
+    # If already authenticated, don't reprocess the callback
+    if st.session_state.get('authenticated'):
+        logger.info("Already authenticated, skipping Microsoft OAuth callback processing")
+        return False
+    
+    query_params = get_query_params()
+    
+    if 'code' not in query_params:
+        logger.info("No auth code in query params")
+        return False
+    
+    auth_code = query_params['code']
+    logger.info(f"Received Microsoft auth code: {auth_code[:20]}...")
+    
+    try:
+        # Show loading spinner
+        with st.spinner("Authenticating with Microsoft..."):
+            logger.info("Starting Microsoft token exchange...")
+            # Exchange auth code for access token
+            token_data = exchange_microsoft_code_for_token(auth_code, microsoft_config)
+            logger.info("Microsoft token exchange successful")
+            
+            # Get user information
+            access_token = token_data.get('access_token')
+            logger.info("Exchanging Microsoft token for user info...")
+            user_info = get_microsoft_user_info(access_token)
+            logger.info(f"Microsoft user info retrieved: {user_info}")
+            
+            # Validate user
+            is_valid, validation_msg = validate_microsoft_user(user_info, microsoft_config)
+            
+            if not is_valid:
+                st.error(f"❌ {validation_msg}")
+                st.stop()
+            
+            # Store auth data in session state BEFORE clearing query params
+            st.session_state.authenticated = True
+            st.session_state.login_method = "microsoft"
+            st.session_state.access_token = access_token
+            st.session_state.refresh_token = token_data.get('refresh_token')
+            st.session_state.user_info = user_info
+            st.session_state.token_expires_at = None
+            
+            # Extract user email for token storage
+            user_email = user_info.get('mail') or user_info.get('userPrincipalName', 'unknown')
+            
+            # Save token for future use
+            save_token("microsoft", user_email, token_data)
+            
+            # Persist auth to browser storage for page refresh resilience
+            persist_auth_to_browser()
+            
+            logger.info(f"User {user_email} authenticated via Microsoft successfully")
+            st.success("✅ Successfully logged in with Microsoft!")
+            
+            # Clear query params and reload URL cleanly
+            try:
+                st.query_params.clear()
+            except:
+                pass
+            
+            # Use JavaScript to clean the URL in browser history
+            st.markdown("""
+                <script>
+                window.history.replaceState({}, document.title, window.location.pathname);
+                </script>
+            """, unsafe_allow_html=True)
+            
+            # Brief pause before rerun to ensure params are cleared
+            import time
+            time.sleep(0.5)
+            st.rerun()
+        
+    except MicrosoftOAuthError as e:
+        error_msg = str(e)
+        logger.error(f"Microsoft OAuth callback error: {error_msg}")
+        st.error(f"❌ Microsoft Authentication Error: {error_msg}")
+        
+        if "authorization_code is invalid" in error_msg:
+            st.warning("""
+            ### Common Causes and Fixes:
+            
+            **1. Redirect URI Mismatch** (Most Common)
+            - Go to: https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
+            - Find your app and click **Authentication**
+            - Check **Redirect URIs** - must contain exactly: `http://localhost:8501`
+            - If missing, click **Add URI** and add it
+            
+            **2. Invalid or Expired Client Secret**
+            - Go to **Certificates & secrets** in Azure Portal
+            - Check if your secret has expired
+            - If expired, create a new one and update config.yaml
+            
+            **3. Authorization Code Expired**
+            - Try logging in again
+            - Make sure to complete login quickly after clicking the button
+            """)
+        elif "AADSTS" in error_msg:
+            st.warning("""
+            ### Azure AD Error - Check Your Configuration
+            
+            Error codes starting with AADSTS are from Azure AD. Common issues:
+            - Client ID is incorrect or from the wrong tenant
+            - Tenant ID is incorrect
+            - Application is not registered in the correct Azure AD
+            
+            Verify in Azure Portal:
+            1. Your app exists and is registered
+            2. Application (client) ID matches config.yaml
+            3. Directory (tenant) ID matches config.yaml
+            4. Client secret is valid and not expired
+            """)
+        
+        if st.button("🔄 Try Again", key="retry_microsoft_login"):
+            st.query_params.clear()
+            st.rerun()
+            
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"Unexpected error in Microsoft OAuth callback: {error_msg}")
+        st.error(f"❌ Unexpected error during authentication: {error_msg}")
+        
+        if st.button("🔄 Try Again", key="retry_microsoft_error"):
+            st.query_params.clear()
+            st.rerun()
 
 
 def render_user_menu_top_right():
     """Render compact user menu in top right corner with user image and welcome message."""
     user_info = st.session_state.get('user_info', {})
+    login_method = st.session_state.get('login_method', 'jira')
     
     if not user_info:
         return
     
-    name = user_info.get('name', 'User')
-    email = user_info.get('email', 'N/A')
-    picture = user_info.get('picture')
+    # Handle both Jira and Microsoft user info formats
+    if login_method == 'microsoft':
+        name = user_info.get('displayName', 'User')
+        email = user_info.get('mail') or user_info.get('userPrincipalName', 'N/A')
+        picture = user_info.get('picture')  # Microsoft photo retrieved via Graph API
+    else:  # Jira
+        name = user_info.get('name', 'User')
+        email = user_info.get('email', 'N/A')
+        picture = user_info.get('picture')
     
     # Extract first name
     first_name = name.split()[0] if name else 'User'
@@ -393,6 +571,7 @@ def render_user_menu_top_right():
             with col_info:
                 st.markdown(f"**{name}**")
                 st.caption(email)
+                st.caption(f"🔐 Logged in via: **{login_method.title()}**")
             
             st.divider()
             
@@ -432,6 +611,7 @@ def main():
     config = load_config()
     oauth_config = config.get('oauth', {})
     jira_config = config.get('jira', {})
+    microsoft_config = config.get('microsoft', {})
     
     # Get query parameters
     query_params = get_query_params()
@@ -443,6 +623,8 @@ def main():
         st.session_state.oauth_code_processed = False
     if 'session_id' not in st.session_state:
         st.session_state.session_id = None
+    if 'login_method' not in st.session_state:
+        st.session_state.login_method = "jira"  # Default login method
     
     # Try to restore from file-based session if we see session_id in query params
     if 'session_id' in query_params and not st.session_state.authenticated:
@@ -478,15 +660,28 @@ def main():
         """, unsafe_allow_html=True)
         return
     
-    # Handle OAuth callback if present AND not already authenticated
+    # Handle OAuth callbacks if present AND not already authenticated
     if oauth_enabled and not st.session_state.authenticated and 'code' in query_params:
         if not st.session_state.oauth_code_processed:
-            handle_oauth_callback(oauth_config, jira_config)
+            # Extract provider from state parameter (survives OAuth redirect)
+            from auth.oauth import extract_provider_from_state
+            state = query_params.get('state')
+            provider = extract_provider_from_state(state) if state else 'jira'
+            
+            if provider == 'microsoft' and microsoft_config.get('enabled'):
+                # Handle Microsoft OAuth callback
+                handle_microsoft_oauth_callback(microsoft_config, jira_config)
+                st.session_state.login_method = 'microsoft'
+            else:
+                # Handle Jira OAuth callback
+                handle_oauth_callback(oauth_config, jira_config)
+                st.session_state.login_method = 'jira'
+            
             st.session_state.oauth_code_processed = True
     
     # Redirect to login if OAuth enabled and not authenticated
     if oauth_enabled and not st.session_state.authenticated:
-        render_login_page(oauth_config, jira_config)
+        render_login_page(oauth_config, jira_config, microsoft_config)
         return
     
     # If OAuth disabled, fall back to config-based authentication
