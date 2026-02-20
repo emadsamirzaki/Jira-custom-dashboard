@@ -6,13 +6,30 @@ services:
     container_name: jira-dashboard
     ports:
       - "8501:8501"
+    env_file:
+      - .env
     environment:
-      # Jira Configuration (required)
+      # These are loaded from .env file but can be overridden here
+      # Jira Configuration (from .env)
       - JIRA_URL=${JIRA_URL}
       - JIRA_EMAIL=${JIRA_EMAIL}
-      - JIRA_TOKEN=${JIRA_TOKEN}
+      - JIRA_API_TOKEN=${JIRA_API_TOKEN}
       - JIRA_PROJECT_KEY=${JIRA_PROJECT_KEY}
       - JIRA_BOARD_ID=${JIRA_BOARD_ID}
+      - JIRA_ALLOWED_INSTANCE=${JIRA_ALLOWED_INSTANCE}
+      
+      # Jira OAuth Configuration
+      - JIRA_OAUTH_ENABLED=${JIRA_OAUTH_ENABLED}
+      - JIRA_CLIENT_ID=${JIRA_CLIENT_ID}
+      - JIRA_CLIENT_SECRET=${JIRA_CLIENT_SECRET}
+      - JIRA_REDIRECT_URI=${JIRA_REDIRECT_URI}
+      
+      # Microsoft OAuth Configuration
+      - MICROSOFT_OAUTH_ENABLED=${MICROSOFT_OAUTH_ENABLED}
+      - MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID}
+      - MICROSOFT_CLIENT_SECRET=${MICROSOFT_CLIENT_SECRET}
+      - MICROSOFT_TENANT_ID=${MICROSOFT_TENANT_ID}
+      - MICROSOFT_REDIRECT_URI=${MICROSOFT_REDIRECT_URI}
       
       # Streamlit Settings
       - STREAMLIT_SERVER_PORT=8501
